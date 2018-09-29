@@ -2,4 +2,5 @@
 !.gitignore
 
 build.xml
+*.html
 *.jar

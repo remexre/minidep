@@ -3,94 +3,95 @@ grammar edu:umn:cs:melt:minidep:abstractsyntax;
 import edu:umn:cs:melt:minidep:concretesyntax;
 import edu:umn:cs:melt:minidep:util;
 import silver:langutil;
+import silver:langutil:pp;
 
-nonterminal Root with errors, location, pp;
-nonterminal Expr with errors, expr1, expr2, expr3, expr4, inhTy, location, normalized, synTy, tyEnv;
+nonterminal Root with env, errors, location, pp;
+nonterminal Expr with env, errors, location;
 
-inherited attribute inhTy :: Maybe<Expr>;
-inherited attribute tyEnv :: [Pair<String Expr>];
+inherited attribute env :: [Pair<String Pair<Expr Expr>>];
 synthesized attribute errors :: [Message] with ++;
-synthesized attribute normalized :: Expr;
-synthesized attribute synTy :: Expr;
 
 abstract production root
 top::Root ::= e::Expr
 {
+  e.env = top.env;
   top.errors := e.errors;
-  top.pp = e.expr1.pp;
+  top.pp = ppExpr(e);
 }
 
 -- Operator productions.
 
-abstract production add
-top::Expr ::= l::Expr r::Expr
+abstract production lam
+top::Expr ::= arg::String body::Expr
 {
-  l.tyEnv = top.tyEnv;
-  r.tyEnv = top.tyEnv;
-
-  top.errors := l.errors ++ r.errors;
-  top.errors <- checkType(l, natTy(location=builtin()));
-  top.errors <- checkType(r, natTy(location=builtin()));
-  top.synTy = natTy(location=builtin());
-
-  top.normalized = case l.normalized, r.normalized of
-  | nat(l), nat(r) -> nat(l + r, location=builtin())
-  | _, _ -> error("type error")
-  end;
+  body.env = top.env;
+  top.errors := body.errors;
 }
 
-abstract production mul
-top::Expr ::= l::Expr r::Expr
+abstract production pi
+top::Expr ::= arg::Maybe<String> ty::Expr body::Expr
 {
-  l.tyEnv = top.tyEnv;
-  r.tyEnv = top.tyEnv;
-
-  top.errors := l.errors ++ r.errors;
-  top.errors <- checkType(l, natTy(location=builtin()));
-  top.errors <- checkType(r, natTy(location=builtin()));
-  top.synTy = natTy(location=builtin());
-
-  top.normalized = case l.normalized, r.normalized of
-  | nat(l), nat(r) -> nat(l * r, location=builtin())
-  | _, _ -> error("type error")
-  end;
+  ty.env = top.env;
+  body.env = top.env;
+  top.errors := ty.errors ++ body.errors;
 }
 
 abstract production tyAnnot
 top::Expr ::= l::Expr r::Expr
 {
-  l.tyEnv = top.tyEnv;
-  r.tyEnv = top.tyEnv;
-
+  l.env = top.env;
+  r.env = top.env;
   top.errors := l.errors ++ r.errors;
-  top.errors <- checkType(l, r.normalized);
-  top.synTy = r.normalized;
+}
 
-  top.normalized = l.normalized;
+abstract production add
+top::Expr ::= l::Expr r::Expr
+{
+  l.env = top.env;
+  r.env = top.env;
+  top.errors := l.errors ++ r.errors;
+}
+
+abstract production mul
+top::Expr ::= l::Expr r::Expr
+{
+  l.env = top.env;
+  r.env = top.env;
+  top.errors := l.errors ++ r.errors;
+}
+
+abstract production app
+top::Expr ::= l::Expr r::Expr
+{
+  l.env = top.env;
+  r.env = top.env;
+  top.errors := l.errors ++ r.errors;
 }
 
 -- Literal and Identifier productions.
 
+abstract production var
+top::Expr ::= name::Maybe<String>
+{
+  top.errors := [];
+}
+
 abstract production nat
 top::Expr ::= n::Integer -- RIP no unsigned ints
 {
-  top.errors := if n < 0 then [error("Somehow a negative number got in here?")] else [];
-  top.synTy = natTy(location=builtin());
-  top.normalized = top;
+  top.errors := if n < 0
+    then [err(top.location, "Somehow a negative number got in here?")]
+    else [];
 }
 
 abstract production natTy
 top::Expr ::=
 {
   top.errors := [];
-  top.synTy = typeKind(location=builtin());
-  top.normalized = top;
 }
 
 abstract production typeKind
 top::Expr ::=
 {
   top.errors := [];
-  top.synTy = error("Universe Polymorphism is hard");
-  top.normalized = top;
 }
