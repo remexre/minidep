@@ -29,38 +29,62 @@ top::Expr ::= l::Expr r::Expr
   r.tyEnv = top.tyEnv;
 
   top.errors := l.errors ++ r.errors;
-  top.errors <- checkType(l, intTy(location=builtin()));
-  top.errors <- checkType(r, intTy(location=builtin()));
-  top.synTy = intTy(location=builtin());
+  top.errors <- checkType(l, natTy(location=builtin()));
+  top.errors <- checkType(r, natTy(location=builtin()));
+  top.synTy = natTy(location=builtin());
 
   top.normalized = case l.normalized, r.normalized of
+  | nat(l), nat(r) -> nat(l + r, location=builtin())
   | _, _ -> error("type error")
   end;
 }
 
-abstract production sub
+abstract production mul
 top::Expr ::= l::Expr r::Expr
 {
   l.tyEnv = top.tyEnv;
   r.tyEnv = top.tyEnv;
 
   top.errors := l.errors ++ r.errors;
-  top.errors <- checkType(l, intTy(location=builtin()));
-  top.errors <- checkType(r, intTy(location=builtin()));
-  top.synTy = intTy(location=builtin());
+  top.errors <- checkType(l, natTy(location=builtin()));
+  top.errors <- checkType(r, natTy(location=builtin()));
+  top.synTy = natTy(location=builtin());
 
   top.normalized = case l.normalized, r.normalized of
+  | nat(l), nat(r) -> nat(l * r, location=builtin())
   | _, _ -> error("type error")
   end;
 }
 
+abstract production tyAnnot
+top::Expr ::= l::Expr r::Expr
+{
+  l.tyEnv = top.tyEnv;
+  r.tyEnv = top.tyEnv;
+
+  top.errors := l.errors ++ r.errors;
+  top.errors <- checkType(l, r.normalized);
+  top.synTy = r.normalized;
+
+  top.normalized = l.normalized;
+}
+
 -- Literal and Identifier productions.
 
-abstract production intTy
+abstract production nat
+top::Expr ::= n::Integer -- RIP no unsigned ints
+{
+  top.errors := if n < 0 then [error("Somehow a negative number got in here?")] else [];
+  top.synTy = natTy(location=builtin());
+  top.normalized = top;
+}
+
+abstract production natTy
 top::Expr ::=
 {
   top.errors := [];
   top.synTy = typeKind(location=builtin());
+  top.normalized = top;
 }
 
 abstract production typeKind
@@ -68,4 +92,5 @@ top::Expr ::=
 {
   top.errors := [];
   top.synTy = error("Universe Polymorphism is hard");
+  top.normalized = top;
 }

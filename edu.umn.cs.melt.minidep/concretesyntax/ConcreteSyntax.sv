@@ -48,11 +48,25 @@ nonterminal Expr2_c with ast<Expr>, location, pp;
 nonterminal Expr3_c with ast<Expr>, location, pp;
 nonterminal Expr4_c with ast<Expr>, location, pp;
 
-concrete production plus_c
-top::Expr1_c ::= l::Expr1_c '+' r::Expr2_c
+concrete production tyAnnot_c
+top::Expr1_c ::= l::Expr1_c ':' r::Expr2_c
+{
+  top.ast = tyAnnot(l.ast, r.ast, location=top.location);
+  top.pp = cat(l.pp, cat(text(" : "), r.pp));
+}
+
+concrete production add_c
+top::Expr2_c ::= l::Expr2_c '+' r::Expr3_c
 {
   top.ast = add(l.ast, r.ast, location=top.location);
   top.pp = cat(l.pp, cat(text(" + "), r.pp));
+}
+
+concrete production mul_c
+top::Expr3_c ::= l::Expr3_c '*' r::Expr4_c
+{
+  top.ast = mul(l.ast, r.ast, location=top.location);
+  top.pp = cat(l.pp, cat(text(" * "), r.pp));
 }
 
 concrete production parens_c
@@ -62,11 +76,18 @@ top::Expr4_c ::= '(' e::Expr1_c ')'
   top.pp = parens(e.pp);
 }
 
-concrete production intTy_c
-top::Expr4_c ::= e::'Int'
+concrete production nat_c
+top::Expr4_c ::= e::Nat_t
 {
-  top.ast = intTy(location=e.location);
-  top.pp = text("Int");
+  top.ast = nat(toInt(e.lexeme), location=top.location);
+  top.pp = text(e.lexeme);
+}
+
+concrete production natTy_c
+top::Expr4_c ::= e::'Nat'
+{
+  top.ast = natTy(location=e.location);
+  top.pp = text("Nat");
 }
 
 concrete production typeKind_c

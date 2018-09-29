@@ -17,7 +17,6 @@ terminal Colon_t ':';
 terminal Cons_t  '::';
 
 terminal Plus_t  '+';
-terminal Minus_t '-';
 terminal Times_t '*';
 
 terminal LParen_t '(';
@@ -26,11 +25,11 @@ terminal LBrack_t '[';
 terminal RBrack_t ']';
 
 terminal False_t    'false';
-terminal IntTy_t    'Int';
+terminal NatTy_t    'Nat';
 terminal True_t     'true';
 terminal TypeKind_t 'TYPE';
 
-terminal Int_t  /[0-9]+/ named "an integer";
+terminal Nat_t  /[0-9]+/ named "a natural number";
 terminal Name_t /[a-zA-Z_][0-9a-zA-Z_]*/ named "a name";
 
 ignore terminal Whitespace_t  /[\n\r\t\ ]+/ named "whitespace";
