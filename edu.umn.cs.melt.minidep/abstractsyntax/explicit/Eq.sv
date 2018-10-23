@@ -1,4 +1,4 @@
-grammar edu:umn:cs:melt:minidep:abstractsyntax;
+grammar edu:umn:cs:melt:minidep:abstractsyntax:explicit;
 
 function exprEq
 Boolean ::= l::Expr r::Expr

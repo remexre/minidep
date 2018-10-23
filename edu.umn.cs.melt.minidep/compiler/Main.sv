@@ -1,8 +1,9 @@
 grammar edu:umn:cs:melt:minidep:compiler;
 
 import core:monad;
-import edu:umn:cs:melt:minidep:abstractsyntax;
+import edu:umn:cs:melt:minidep:abstractsyntax:implicit;
 import edu:umn:cs:melt:minidep:concretesyntax;
+import edu:umn:cs:melt:minidep:util;
 import silver:langutil;
 import silver:langutil:pp;
 
@@ -26,13 +27,22 @@ IOVal<Integer> ::= args::[String] ioIn::IO
         printM(result.parseErrors ++ "\n");
         return 2;
       } else {
-        printM("cst pp: " ++ result.parseTree.pp.result ++ "\n");
+        printM("cst pp: " ++ show(80, result.parseTree.pp) ++ "\n");
         ast :: Decorated Root = decorate result.parseTree.ast with {
+          atoms = [
+            pair("List", pi(nothing(), typeKind(location=builtin()),
+                                       typeKind(location=builtin()),
+                                       location=builtin())),
+            pair("Nat", typeKind(location=builtin())),
+            pair("nil", pi(nothing(), typeKind(location=builtin()),
+                                       typeKind(location=builtin()),
+                                       location=builtin()))
+          ];
           env = [];
         };
-        printM("ast pp: " ++ ast.pp.result ++ "\n");
+        printM("ast pp: " ++ show(80, ast.pp) ++ "\n");
         if null(ast.errors) then {
-          printM("value: " ++ ppsExpr(ast.normalized) ++ "\n");
+          -- printM("value: " ++ ppsExpr(ast.normalized) ++ "\n");
           return 0;
         } else {
           printM(messagesToString(ast.errors) ++ "\n");

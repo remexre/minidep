@@ -1,4 +1,4 @@
-grammar edu:umn:cs:melt:minidep:abstractsyntax;
+grammar edu:umn:cs:melt:minidep:abstractsyntax:explicit;
 
 import edu:umn:cs:melt:minidep:concretesyntax;
 import edu:umn:cs:melt:minidep:util;
