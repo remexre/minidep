@@ -1,97 +1,78 @@
 grammar edu:umn:cs:melt:minidep:abstractsyntax:explicit;
 
-import edu:umn:cs:melt:minidep:concretesyntax;
 import edu:umn:cs:melt:minidep:util;
 import silver:langutil;
 import silver:langutil:pp;
 
-nonterminal Root with env, errors, location, pp;
-nonterminal Expr with env, errors, location;
+nonterminal Decls with errors, pp;
 
-inherited attribute env :: [Pair<String Pair<Expr Expr>>];
-synthesized attribute errors :: [Message] with ++;
-
-abstract production root
-top::Root ::= e::Expr
+abstract production declsCons
+top::Decls ::= h::Decl t::Decls
 {
-  e.env = top.env;
-  top.errors := e.errors;
-  top.pp = ppExpr(e);
+  top.errors := h.errors ++ t.errors;
 }
 
--- Operator productions.
-
-abstract production lam
-top::Expr ::= arg::String body::Expr
+abstract production declsNil
+top::Decls ::=
 {
-  body.env = top.env;
-  top.errors := body.errors;
+  top.errors := [];
 }
 
-abstract production pi
-top::Expr ::= arg::Maybe<String> ty::Expr body::Expr
+nonterminal Implicits with asList<Pair<String Expr>>, errors, location;
+synthesized attribute asList<a> :: [a];
+
+abstract production implicitsCons
+top::Implicits ::= n::String e::Expr t::Implicits
 {
-  ty.env = top.env;
-  body.env = top.env;
-  top.errors := ty.errors ++ body.errors;
+  top.asList = cons(pair(n, e), t.asList);
+  top.errors := e.errors ++ t.errors;
 }
 
-abstract production tyAnnot
-top::Expr ::= l::Expr r::Expr
+abstract production implicitsNil
+top::Implicits ::=
 {
-  l.env = top.env;
-  r.env = top.env;
-  top.errors := l.errors ++ r.errors;
+  top.asList = nil();
+  top.errors := [];
 }
 
-abstract production add
-top::Expr ::= l::Expr r::Expr
+nonterminal Decl with errors, location, pp, sig;
+synthesized attribute sig :: Signature;
+
+abstract production decl
+top::Decl ::= name::String implicits::Implicits ty::Expr body::Expr
 {
-  l.env = top.env;
-  r.env = top.env;
-  top.errors := l.errors ++ r.errors;
+  top.errors := implicits.errors ++ ty.errors ++ body.errors;
+  top.sig = sig(name, implicits, ty);
 }
 
-abstract production mul
-top::Expr ::= l::Expr r::Expr
-{
-  l.env = top.env;
-  r.env = top.env;
-  top.errors := l.errors ++ r.errors;
-}
+nonterminal Signature;
+
+abstract production sig
+top::Signature ::= name::String implicits::Implicits ty::Expr
+{}
+
+nonterminal Expr with errors, location;
 
 abstract production app
 top::Expr ::= l::Expr r::Expr
 {
-  l.env = top.env;
-  r.env = top.env;
   top.errors := l.errors ++ r.errors;
 }
 
--- Literal and Identifier productions.
+abstract production lam
+top::Expr ::= name::String body::Expr
+{
+  top.errors := body.errors;
+}
+
+abstract production pi
+top::Expr ::= name::Maybe<String> l::Expr r::Expr
+{
+  top.errors := l.errors ++ r.errors;
+}
 
 abstract production var
-top::Expr ::= name::Maybe<String>
-{
-  top.errors := [];
-}
-
-abstract production nat
-top::Expr ::= n::Integer -- RIP no unsigned ints
-{
-  top.errors := if n < 0
-    then [err(top.location, "Somehow a negative number got in here?")]
-    else [];
-}
-
-abstract production natTy
-top::Expr ::=
-{
-  top.errors := [];
-}
-
-abstract production typeKind
-top::Expr ::=
+top::Expr ::= name::String
 {
   top.errors := [];
 }
