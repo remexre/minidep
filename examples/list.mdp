@@ -5,8 +5,8 @@ m : List Nat;;
 m = nil { T = Nat };;
 
 -- TODO: Datatype declarations...
-v : TYPE -> Nat -> TYPE;;
-v = \T. \n. List T;;
+Vect : TYPE -> Nat -> TYPE;;
+Vect = \T. \n. List T;;
 
 c {n:Nat, T:TYPE} : T -> Vect T n -> Vect T (succ n);;
 c = \h. \t. cons h t;;

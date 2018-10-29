@@ -74,16 +74,16 @@ IOVal<Integer> ::= args::[String] ioIn::IO
             return 1;
           } else {
             printM("\nast pp (pre-elaboration):\n" ++ show(80, astPreElaboration.pp));
-            astPostElaboration :: Decorated spined:Decls = decorate astPreElaboration.elaboratedDecls with {
+            astPreUnification :: Decorated spined:Decls = decorate astPreElaboration.elaboratedDecls with {
               -- env = defaultEnv;
             };
-            if !null(astPostElaboration.errors) then {
-              printM(messagesToString(astPostElaboration.errors) ++ "\n");
+            if !null(astPreUnification.errors) then {
+              printM(messagesToString(astPreUnification.errors) ++ "\n");
               return 1;
             } else {
-              printM("\nast pp (post-elaboration):\n" ++ show(80, astPostElaboration.pp));
+              printM("\nast pp (pre-unification):\n" ++ show(80, astPreUnification.pp));
               return 0; {-
-              astPostUnification :: Decorated Decls = decorate astPostElaboration.unified with {
+              astPostUnification :: Decorated Decls = decorate astPreUnification.unified with {
                 -- env = defaultEnv;
               };
               if !null(astPostUnification.errors) then {

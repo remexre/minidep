@@ -26,7 +26,7 @@ abstract production sig
 top::Signature ::= implicits::Map<String Expr> ty::Expr
 {}
 
-nonterminal Decl with errors, location, pp, sigs;
+nonterminal Decl with errors, location, sigs;
 synthesized attribute sigs :: [Pair<String Signature>];
 
 abstract production decl
