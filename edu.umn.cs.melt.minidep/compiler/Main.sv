@@ -2,7 +2,6 @@ grammar edu:umn:cs:melt:minidep:compiler;
 
 import core:monad;
 import edu:umn:cs:melt:minidep:abstractsyntax:explicit;
-import edu:umn:cs:melt:minidep:concretesyntax as cst;
 import edu:umn:cs:melt:minidep:concretesyntax only Root_c, ast;
 import edu:umn:cs:melt:minidep:util;
 import silver:langutil;
@@ -17,27 +16,31 @@ function main
 IOVal<Integer> ::= args::[String] ioIn::IO
 {
   local defaultEnv :: [Signature] = [
-    sig("Nat", implicitsNil(location=builtin()), var("TYPE", location=builtin())),
-    sig("zero", implicitsNil(location=builtin()), var("Nat", location=builtin())),
+    sig("Nat", implicitsNil(location=builtin()),
+      var("TYPE", implicitsNil(location=builtin()), location=builtin())),
+    sig("zero", implicitsNil(location=builtin()),
+      var("Nat",  implicitsNil(location=builtin()),location=builtin())),
     sig("succ", implicitsNil(location=builtin()),
-      pi(nothing(), var("Nat", location=builtin()),
-                    var("Nat", location=builtin()),
+      pi(nothing(), var("Nat", implicitsNil(location=builtin()), location=builtin()),
+                    var("Nat", implicitsNil(location=builtin()), location=builtin()),
                     location=builtin())),
     sig("List", implicitsNil(location=builtin()),
-      pi(nothing(), var("TYPE", location=builtin()),
-                    var("TYPE", location=builtin()),
+      pi(nothing(), var("TYPE", implicitsNil(location=builtin()), location=builtin()),
+                    var("TYPE", implicitsNil(location=builtin()), location=builtin()),
                     location=builtin())),
-    sig("nil", implicitsCons("T", var("TYPE", location=builtin()), implicitsNil(location=builtin()), location=builtin()),
-      app(var("List", location=builtin()),
-          var("T", location=builtin()),
+    sig("nil", implicitsCons("T", var("TYPE", implicitsNil(location=builtin()), location=builtin()),
+               implicitsNil(location=builtin()), location=builtin()),
+      app(var("List", implicitsNil(location=builtin()), location=builtin()),
+          var("T", implicitsNil(location=builtin()), location=builtin()),
           location=builtin())),
-    sig("cons", implicitsCons("T", var("TYPE", location=builtin()), implicitsNil(location=builtin()), location=builtin()),
-      pi(nothing(), var("T", location=builtin()),
-                    pi(nothing(), app(var("List", location=builtin()),
-                                      var("T", location=builtin()),
+    sig("cons", implicitsCons("T", var("TYPE", implicitsNil(location=builtin()), location=builtin()),
+                implicitsNil(location=builtin()), location=builtin()),
+      pi(nothing(), var("T", implicitsNil(location=builtin()), location=builtin()),
+                    pi(nothing(), app(var("List", implicitsNil(location=builtin()), location=builtin()),
+                                      var("T", implicitsNil(location=builtin()), location=builtin()),
                                       location=builtin()),
-                                  app(var("List", location=builtin()),
-                                      var("T", location=builtin()),
+                                  app(var("List", implicitsNil(location=builtin()), location=builtin()),
+                                      var("T", implicitsNil(location=builtin()), location=builtin()),
                                       location=builtin()),
                                   location=builtin()),
                     location=builtin()))
@@ -54,15 +57,13 @@ IOVal<Integer> ::= args::[String] ioIn::IO
         printM(result.parseErrors ++ "\n");
         return 2;
       } else {
-        cst :: Decorated Root_c = decorate result.parseTree with {
-          cst:env = map(\s :: Signature -> error("TODO"), defaultEnv);
-        };
+        cst :: Root_c = result.parseTree;
         if !null(cst.errors) then {
-          printM(messagesToString(result.parseTree.errors) ++ "\n");
+          printM(messagesToString(cst.errors) ++ "\n");
           return 1;
         } else {
-          printM("cst pp:\n" ++ show(80, result.parseTree.pp));
-          ast :: Decorated Decls = decorate result.parseTree.ast with {
+          printM("cst pp:\n" ++ show(80, cst.pp));
+          ast :: Decorated Decls = decorate cst.ast with {
           };
           printM("ast pp:\n" ++ show(80, ast.pp));
           if !null(ast.errors) then {

@@ -1,5 +1,7 @@
 grammar edu:umn:cs:melt:minidep:util;
 
+synthesized attribute asList<a> :: [a];
+
 function isJust
 Boolean ::= a::Maybe<a>
 {

@@ -4,7 +4,9 @@ import edu:umn:cs:melt:minidep:util;
 import silver:langutil;
 import silver:langutil:pp;
 
-nonterminal Decls with errors, pp;
+autocopy attribute env :: [Pair<String Maybe<Signature>>];
+
+nonterminal Decls with env, errors, pp;
 
 abstract production declsCons
 top::Decls ::= h::Decl t::Decls
@@ -18,14 +20,15 @@ top::Decls ::=
   top.errors := [];
 }
 
-nonterminal Implicits with asList<Pair<String Expr>>, errors, location;
-synthesized attribute asList<a> :: [a];
+closed nonterminal Implicits with asList<Pair<String Expr>>, env, errors, location, names;
+synthesized attribute names :: [String];
 
 abstract production implicitsCons
 top::Implicits ::= n::String e::Expr t::Implicits
 {
   top.asList = cons(pair(n, e), t.asList);
   top.errors := e.errors ++ t.errors;
+  top.names = cons(n, t.names);
 }
 
 abstract production implicitsNil
@@ -33,9 +36,26 @@ top::Implicits ::=
 {
   top.asList = nil();
   top.errors := [];
+  top.names = nil();
 }
 
-nonterminal Decl with errors, location, pp, sig;
+closed nonterminal ImplicitVals with asList<Pair<String Expr>>, env, errors, location;
+
+abstract production implicitValsCons
+top::Implicits ::= n::String e::Expr t::Implicits
+{
+  top.asList = cons(pair(n, e), t.asList);
+  top.errors := e.errors ++ t.errors;
+}
+
+abstract production implicitValsNil
+top::Implicits ::=
+{
+  top.asList = nil();
+  top.errors := [];
+}
+
+nonterminal Decl with env, errors, location, pp, sig;
 synthesized attribute sig :: Signature;
 
 abstract production decl
@@ -45,18 +65,18 @@ top::Decl ::= name::String implicits::Implicits ty::Expr body::Expr
   top.sig = sig(name, implicits, ty);
 }
 
-nonterminal Signature;
+closed nonterminal Signature with env;
 
 abstract production sig
 top::Signature ::= name::String implicits::Implicits ty::Expr
 {}
 
-nonterminal Expr with errors, location;
+nonterminal Expr with env, errors, location;
 
 abstract production app
-top::Expr ::= l::Expr r::Expr
+top::Expr ::= f::Expr x::Expr
 {
-  top.errors := l.errors ++ r.errors;
+  top.errors := f.errors ++ x.errors;
 }
 
 abstract production lam
@@ -72,7 +92,7 @@ top::Expr ::= name::Maybe<String> l::Expr r::Expr
 }
 
 abstract production var
-top::Expr ::= name::String
+top::Expr ::= name::String implicits::Implicits
 {
   top.errors := [];
 }
