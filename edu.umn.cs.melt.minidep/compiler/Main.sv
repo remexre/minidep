@@ -1,7 +1,8 @@
 grammar edu:umn:cs:melt:minidep:compiler;
 
 import core:monad;
-import edu:umn:cs:melt:minidep:abstractsyntax:explicit;
+import edu:umn:cs:melt:minidep:abstractsyntax:implicit;
+import edu:umn:cs:melt:minidep:abstractsyntax:spined as spined;
 import edu:umn:cs:melt:minidep:concretesyntax only Root_c, ast;
 import edu:umn:cs:melt:minidep:util;
 import silver:langutil;
@@ -15,36 +16,38 @@ parser parse::Root_c
 function main
 IOVal<Integer> ::= args::[String] ioIn::IO
 {
-  local defaultEnv :: [Signature] = [
-    sig("Nat", implicitsNil(location=builtin()),
-      var("TYPE", implicitsNil(location=builtin()), location=builtin())),
-    sig("zero", implicitsNil(location=builtin()),
-      var("Nat",  implicitsNil(location=builtin()),location=builtin())),
-    sig("succ", implicitsNil(location=builtin()),
-      pi(nothing(), var("Nat", implicitsNil(location=builtin()), location=builtin()),
-                    var("Nat", implicitsNil(location=builtin()), location=builtin()),
-                    location=builtin())),
-    sig("List", implicitsNil(location=builtin()),
-      pi(nothing(), var("TYPE", implicitsNil(location=builtin()), location=builtin()),
-                    var("TYPE", implicitsNil(location=builtin()), location=builtin()),
-                    location=builtin())),
-    sig("nil", implicitsCons("T", var("TYPE", implicitsNil(location=builtin()), location=builtin()),
-               implicitsNil(location=builtin()), location=builtin()),
-      app(var("List", implicitsNil(location=builtin()), location=builtin()),
-          var("T", implicitsNil(location=builtin()), location=builtin()),
-          location=builtin())),
-    sig("cons", implicitsCons("T", var("TYPE", implicitsNil(location=builtin()), location=builtin()),
-                implicitsNil(location=builtin()), location=builtin()),
-      pi(nothing(), var("T", implicitsNil(location=builtin()), location=builtin()),
-                    pi(nothing(), app(var("List", implicitsNil(location=builtin()), location=builtin()),
-                                      var("T", implicitsNil(location=builtin()), location=builtin()),
-                                      location=builtin()),
-                                  app(var("List", implicitsNil(location=builtin()), location=builtin()),
-                                      var("T", implicitsNil(location=builtin()), location=builtin()),
-                                      location=builtin()),
-                                  location=builtin()),
-                    location=builtin()))
-  ];
+  local defaultEnv :: [Pair<String Maybe<Signature>>] = map(
+    \p::Pair<String Signature> -> pair(p.fst, just(p.snd)),
+    [ pair("Nat", sig(implicitsNil(location=builtin()),
+        var("TYPE", implicitsNil(location=builtin()), location=builtin())))
+    , pair("zero", sig(implicitsNil(location=builtin()),
+        var("Nat",  implicitsNil(location=builtin()),location=builtin())))
+    , pair("succ", sig(implicitsNil(location=builtin()),
+        pi(nothing(), var("Nat", implicitsNil(location=builtin()), location=builtin()),
+                      var("Nat", implicitsNil(location=builtin()), location=builtin()),
+                      location=builtin())))
+    , pair("List", sig(implicitsNil(location=builtin()),
+        pi(nothing(), var("TYPE", implicitsNil(location=builtin()), location=builtin()),
+                      var("TYPE", implicitsNil(location=builtin()), location=builtin()),
+                      location=builtin())))
+    , pair("nil", sig(implicitsCons("T", var("TYPE", implicitsNil(location=builtin()), location=builtin()),
+                      implicitsNil(location=builtin()), location=builtin()),
+        app(var("List", implicitsNil(location=builtin()), location=builtin()),
+            var("T", implicitsNil(location=builtin()), location=builtin()),
+            location=builtin())))
+    , pair("cons", sig(implicitsCons("T", var("TYPE", implicitsNil(location=builtin()), location=builtin()),
+                       implicitsNil(location=builtin()), location=builtin()),
+        pi(nothing(), var("T", implicitsNil(location=builtin()), location=builtin()),
+                      pi(nothing(), app(var("List", implicitsNil(location=builtin()), location=builtin()),
+                                        var("T", implicitsNil(location=builtin()), location=builtin()),
+                                        location=builtin()),
+                                    app(var("List", implicitsNil(location=builtin()), location=builtin()),
+                                        var("T", implicitsNil(location=builtin()), location=builtin()),
+                                        location=builtin()),
+                                    location=builtin()),
+                      location=builtin())))
+    ]);
+
   return evalIO(do (bindIO, returnIO) {
     if null(args) then {
       printM("Usage: [minidep invocation] [filename]\n");
@@ -63,15 +66,41 @@ IOVal<Integer> ::= args::[String] ioIn::IO
           return 1;
         } else {
           printM("cst pp:\n" ++ show(80, cst.pp));
-          ast :: Decorated Decls = decorate cst.ast with {
+          astPreElaboration :: Decorated Decls = decorate cst.ast with {
+            env = defaultEnv;
           };
-          printM("ast pp:\n" ++ show(80, ast.pp));
-          if !null(ast.errors) then {
-            printM(messagesToString(ast.errors) ++ "\n");
+          if !null(astPreElaboration.errors) then {
+            printM(messagesToString(astPreElaboration.errors) ++ "\n");
             return 1;
           } else {
-            -- printM("value: " ++ ppsExpr(ast.normalized) ++ "\n");
-            return 0;
+            printM("\nast pp (pre-elaboration):\n" ++ show(80, astPreElaboration.pp));
+            astPostElaboration :: Decorated spined:Decls = decorate astPreElaboration.elaboratedDecls with {
+              -- env = defaultEnv;
+            };
+            if !null(astPostElaboration.errors) then {
+              printM(messagesToString(astPostElaboration.errors) ++ "\n");
+              return 1;
+            } else {
+              printM("\nast pp (post-elaboration):\n" ++ show(80, astPostElaboration.pp));
+              return 0; {-
+              astPostUnification :: Decorated Decls = decorate astPostElaboration.unified with {
+                -- env = defaultEnv;
+              };
+              if !null(astPostUnification.errors) then {
+                printM(messagesToString(astPostUnification.errors) ++ "\n");
+                return 1;
+              } else {
+                printM("\nast pp (post-unification):\n" ++ show(80, astPostUnification.pp));
+                if astPostUnification.hasVars then {
+                  printM("error: post-unification ast has unsolved variables!\n");
+                  return 1;
+                } else {
+                  -- TODO
+                  return 0;
+                }
+              }
+              -}
+            }
           }
         }
       }

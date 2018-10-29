@@ -1,2 +1,15 @@
 l : List Nat;;
 l = [1, 2, 1 + 2, 2 * 2];;
+
+m : List Nat;;
+m = nil { T = Nat };;
+
+-- TODO: Datatype declarations...
+v : TYPE -> Nat -> TYPE;;
+v = \T. \n. List T;;
+
+c {n:Nat, T:TYPE} : T -> Vect T n -> Vect T (succ n);;
+c = \h. \t. cons h t;;
+
+n {T:TYPE} : Vect T zero;;
+n = nil;;
