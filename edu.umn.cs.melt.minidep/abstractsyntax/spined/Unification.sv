@@ -8,7 +8,6 @@ import silver:util:raw:treemap as rtm;
 import silver:util:raw:treemap only Map;
 import silver:util:raw:treeset as set;
 
-{-
 closed nonterminal Subst;
 
 nonterminal Constraint with pp, solve;
@@ -34,9 +33,9 @@ top::Constraint ::= l::Decorated Expr r::Decorated Expr
     , r.expr5_c.pp
     ]);
   top.solve = case l, r of
-  | app(f, x), r -> error("Not a pi type: " ++ show(80, r.expr1_c.pp))
+  | call(f, xs), r -> error("Not a pi type: " ++ show(80, r.expr1_c.pp))
   | var(name, imps), _ ->
-      case lookupBy(stringEq, name, l.env) of
+      case lookupBy(stringEq, name, error("env")) of
       | just(just(sig(imps, ty))) -> error("TODO jj in hasTy")
       | just(nothing()) -> error("TODO jn in hasTy")
       | nothing() -> error("TODO n in hasTy")
@@ -68,12 +67,13 @@ top::Constraint ::= f::Decorated Expr y::Decorated Expr
   top.solve = error("TODO Solve " ++ show(80, top.pp));
 }
 
-synthesized attribute constraints :: [Constraint] occurs on Decl, Decls, Expr, Implicits, Signature;
-synthesized attribute hasVars :: Boolean occurs on Decl, Decls, Expr, Implicits, Signature;
+synthesized attribute constraints :: [Constraint] occurs on Decl, Decls, Expr, Signature;
+synthesized attribute hasVars :: Boolean occurs on Decl, Decls, Expr, Signature;
 
 synthesized attribute substDecls :: (Decls ::= Subst) occurs on Decls;
 synthesized attribute unified :: Decls occurs on Decls;
 
+{-
 function solveAll
 Decls ::= cs::[Constraint] ds::Decls
 {

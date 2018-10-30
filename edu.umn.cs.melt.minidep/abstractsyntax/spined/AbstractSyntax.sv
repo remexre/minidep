@@ -6,7 +6,9 @@ import silver:langutil:pp;
 import silver:util:raw:treemap as rtm;
 import silver:util:raw:treemap only Map;
 
-closed nonterminal Decls with errors, pp;
+autocopy attribute env :: [Pair<String Maybe<Signature>>];
+
+closed nonterminal Decls with env, errors, pp;
 
 abstract production declsCons
 top::Decls ::= h::Decl t::Decls
@@ -26,7 +28,7 @@ abstract production sig
 top::Signature ::= implicits::Map<String Expr> ty::Expr
 {}
 
-nonterminal Decl with errors, location, sigs;
+nonterminal Decl with env, errors, location, sigs;
 synthesized attribute sigs :: [Pair<String Signature>];
 
 abstract production decl
@@ -39,7 +41,7 @@ top::Decl ::= name::String implicits::Map<String Expr> ty::Expr body::Expr
   top.sigs = [pair(name, sig(implicits, ty))];
 }
 
-closed nonterminal Expr with errors, location;
+closed nonterminal Expr with env, errors, location;
 
 abstract production call
 top::Expr ::= f::Expr xs::[Expr]

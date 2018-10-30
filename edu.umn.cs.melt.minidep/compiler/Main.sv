@@ -2,6 +2,7 @@ grammar edu:umn:cs:melt:minidep:compiler;
 
 import core:monad;
 import edu:umn:cs:melt:minidep:abstractsyntax:implicit;
+import edu:umn:cs:melt:minidep:abstractsyntax:implicit as implicit;
 import edu:umn:cs:melt:minidep:abstractsyntax:spined as spined;
 import edu:umn:cs:melt:minidep:concretesyntax only Root_c, ast;
 import edu:umn:cs:melt:minidep:util;
@@ -16,7 +17,7 @@ parser parse::Root_c
 function main
 IOVal<Integer> ::= args::[String] ioIn::IO
 {
-  local defaultEnv :: [Pair<String Maybe<Signature>>] = map(
+  local defaultEnv :: [Pair<String Maybe<implicit:Signature>>] = map(
     \p::Pair<String Signature> -> pair(p.fst, just(p.snd)),
     [ pair("Nat", sig(implicitsNil(location=builtin()),
         var("TYPE", implicitsNil(location=builtin()), location=builtin())))
@@ -47,6 +48,9 @@ IOVal<Integer> ::= args::[String] ioIn::IO
                                     location=builtin()),
                       location=builtin())))
     ]);
+  local spinedDefaultEnv :: [Pair<String Maybe<spined:Signature>>] = map(
+    \p::Pair<String Maybe<implicit:Signature>> -> error("TODO"),
+    defaultEnv);
 
   return evalIO(do (bindIO, returnIO) {
     if null(args) then {
@@ -66,7 +70,7 @@ IOVal<Integer> ::= args::[String] ioIn::IO
           return 1;
         } else {
           printM("cst pp:\n" ++ show(80, cst.pp));
-          astPreElaboration :: Decorated Decls = decorate cst.ast with {
+          astPreElaboration :: Decorated implicit:Decls = decorate cst.ast with {
             env = defaultEnv;
           };
           if !null(astPreElaboration.errors) then {
@@ -82,9 +86,8 @@ IOVal<Integer> ::= args::[String] ioIn::IO
               return 1;
             } else {
               printM("\nast pp (pre-unification):\n" ++ show(80, astPreUnification.pp));
-              return 0; {-
-              astPostUnification :: Decorated Decls = decorate astPreUnification.unified with {
-                -- env = defaultEnv;
+              astPostUnification :: Decorated spined:Decls = decorate astPreUnification.unified with {
+                spined:env = spinedDefaultEnv;
               };
               if !null(astPostUnification.errors) then {
                 printM(messagesToString(astPostUnification.errors) ++ "\n");
@@ -96,10 +99,10 @@ IOVal<Integer> ::= args::[String] ioIn::IO
                   return 1;
                 } else {
                   -- TODO
+                  printM("TODO: FINISH COMPILING!\n");
                   return 0;
                 }
               }
-              -}
             }
           }
         }
