@@ -24,7 +24,7 @@ top::Root_c ::= decls::Decls_c
 nonterminal Decls_c with ast<Decls>, errors, location, pp;
 
 concrete production declsConsClaim_c
-top::Decls_c ::= name::Name_t imps::ImplicitTys_c ':' ty::Expr1_c ';;' tl::Decls_c
+top::Decls_c ::= name::Name_t ':' imps::ImplicitTys_c ty::Expr1_c ';' tl::Decls_c
 {
   local tmpErr :: Pair<Decls [Message]> = pair(
     error("A claim must precede a definition of the same binding"),
@@ -44,17 +44,17 @@ top::Decls_c ::= name::Name_t imps::ImplicitTys_c ':' ty::Expr1_c ';;' tl::Decls
   top.errors := tmp.snd;
   top.pp = ppConcat(
     [ text(name.lexeme)
-    , imps.pp
     , text(" : ")
+    , imps.pp
     , ty.pp
-    , text(";;")
+    , text(";")
     , line()
     , tl.pp
     ]);
 }
 
 concrete production declsConsDef_c
-top::Decls_c ::= name::Name_t '=' expr::Expr1_c ';;' tl::Decls_c
+top::Decls_c ::= name::Name_t '=' expr::Expr1_c ';' tl::Decls_c
 {
   top.ast = error("Definition without a corresponding claim?");
   top.errors := tl.errors;
@@ -63,7 +63,7 @@ top::Decls_c ::= name::Name_t '=' expr::Expr1_c ';;' tl::Decls_c
     [ text(name.lexeme)
     , text(" = ")
     , expr.pp
-    , text(";;")
+    , text(";")
     , line()
     , tl.pp
     ]);
@@ -111,7 +111,7 @@ top::Expr1_c ::= 'Pi' arg::Name_t ':' ty::Expr2_c '.' body::Expr1_c
   top.pp = ppConcat(
     [ text("Pi ")
     , text(arg.lexeme)
-    , text(":")
+    , text(": ")
     , ty.pp
     , text(". ")
     , body.pp
@@ -275,7 +275,7 @@ top::ImplicitTy_c ::= name::Name_t ':' expr::Expr1_c
   top.ast = pair(name.lexeme, expr.ast);
   top.pp = ppConcat(
     [ text(name.lexeme)
-    , text(":")
+    , text(": ")
     , expr.pp
     ]);
 }
@@ -296,7 +296,7 @@ top::ImplicitTys_c ::= '{' h::ImplicitTy_c t::ImplicitTyList_c '}'
 {
   top.ast = implicitsCons(h.ast.fst, h.ast.snd, t.ast, location=top.location);
   top.implicitTyCsts = cons(h, t.implicitTyCsts);
-  top.pp = cat(space(), braces(cat(h.pp, t.pp)));
+  top.pp = cat(braces(cat(h.pp, t.pp)), space());
 }
 
 nonterminal ImplicitTyList_c with ast<Implicits>, implicitTyCsts, location, pp;

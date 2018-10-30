@@ -13,11 +13,10 @@ terminal Equals_t '='  lexer classes {OPERATOR};
 terminal Plus_t   '+'  lexer classes {OPERATOR};
 terminal Times_t  '*'  lexer classes {OPERATOR};
 
-terminal Backslash_t  '\';
-terminal Comma_t      ',';
-terminal Dot_t        '.';
-terminal Semicolon_t  ';';
-terminal Semicolons_t ';;';
+terminal Backslash_t '\';
+terminal Comma_t     ',';
+terminal Dot_t       '.';
+terminal Semicolon_t ';';
 
 terminal LParen_t '(';
 terminal RParen_t ')';

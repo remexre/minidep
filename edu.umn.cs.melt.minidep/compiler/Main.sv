@@ -4,6 +4,7 @@ import core:monad;
 import edu:umn:cs:melt:minidep:abstractsyntax:implicit;
 import edu:umn:cs:melt:minidep:abstractsyntax:implicit as implicit;
 import edu:umn:cs:melt:minidep:abstractsyntax:spined as spined;
+import edu:umn:cs:melt:minidep:abstractsyntax:spined only hasVars, unified;
 import edu:umn:cs:melt:minidep:concretesyntax only Root_c, ast;
 import edu:umn:cs:melt:minidep:util;
 import silver:langutil;

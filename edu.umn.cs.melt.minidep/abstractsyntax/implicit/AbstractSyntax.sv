@@ -2,7 +2,6 @@ grammar edu:umn:cs:melt:minidep:abstractsyntax:implicit;
 
 import edu:umn:cs:melt:minidep:util;
 import silver:langutil;
-import silver:langutil:pp;
 import silver:util:raw:treeset as set;
 
 autocopy attribute env :: [Pair<String Maybe<Signature>>];

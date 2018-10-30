@@ -1,7 +1,6 @@
 grammar edu:umn:cs:melt:minidep:abstractsyntax:spined;
 
 import edu:umn:cs:melt:minidep:concretesyntax;
-import edu:umn:cs:melt:minidep:util;
 import silver:langutil;
 import silver:langutil:pp;
 import silver:util:raw:treemap as rtm;
@@ -46,8 +45,8 @@ top::Decl ::= name::String implicits::Map<String Expr> ty::Expr body::Expr
       asImplicitTyList_c(tail(impList), top.location), '}', location=top.location)
   else
     implicitTysNone_c(location=top.location);
-  top.decls_c = declsConsClaim_c(name_t, imps, ':', ty.expr1_c, ';;',
-    declsConsDef_c(name_t, '=', body.expr1_c, ';;',
+  top.decls_c = declsConsClaim_c(name_t, ':', imps, ty.expr1_c, ';',
+    declsConsDef_c(name_t, '=', body.expr1_c, ';',
       declsNil_c(location=top.location),
       location=top.location),
     location=top.location);

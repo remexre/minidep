@@ -1,7 +1,6 @@
 grammar edu:umn:cs:melt:minidep:abstractsyntax:implicit;
 
 import edu:umn:cs:melt:minidep:concretesyntax;
-import edu:umn:cs:melt:minidep:util;
 import silver:langutil;
 import silver:langutil:pp;
 
@@ -23,9 +22,9 @@ aspect production decl
 top::Decl ::= name::String implicits::Implicits ty::Expr body::Expr
 {
   local name_t :: Name_t = terminal(Name_t, name, top.location);
-  top.decls_c = declsConsClaim_c(name_t, implicits.implicitTys_c, ':',
-    ty.expr1_c, ';;',
-    declsConsDef_c(name_t, '=', body.expr1_c, ';;',
+  top.decls_c = declsConsClaim_c(name_t, ':', implicits.implicitTys_c,
+    ty.expr1_c, ';',
+    declsConsDef_c(name_t, '=', body.expr1_c, ';',
       declsNil_c(location=top.location),
       location=top.location),
     location=top.location);

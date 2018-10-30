@@ -3,7 +3,6 @@ grammar edu:umn:cs:melt:minidep:abstractsyntax:implicit;
 import edu:umn:cs:melt:minidep:abstractsyntax:spined as spined;
 import edu:umn:cs:melt:minidep:util;
 import silver:langutil;
-import silver:langutil:pp;
 import silver:util:raw:treemap as rtm;
 import silver:util:raw:treemap only Map;
 import silver:util:raw:treeset as set;

@@ -1,15 +1,27 @@
-l : List Nat;;
-l = [1, 2, 1 + 2, 2 * 2];;
+l : List Nat;
+l = [1, 2, 1 + 2, 2 * 2];
 
-m : List Nat;;
-m = nil { T = Nat };;
+m : List Nat;
+m = nil { T = Nat };
 
 -- TODO: Datatype declarations...
-Vect : TYPE -> Nat -> TYPE;;
-Vect = \T. \n. List T;;
+Vect : TYPE -> Nat -> TYPE;
+Vect = \T. \n. List T;
 
-c {n:Nat, T:TYPE} : T -> Vect T n -> Vect T (succ n);;
-c = \h. \t. cons h t;;
+c : {n: Nat, T: TYPE} T -> Vect T n -> Vect T (succ n);
+c = \h. \t. cons h t;
 
-n {T:TYPE} : Vect T zero;;
-n = nil;;
+n : {T: TYPE} Vect T zero;
+n = nil;
+
+vectElim : {n: Nat, T: TYPE} Pi m: (Pi n: Nat. Vect T n -> TYPE).
+		   (Pi k: Nat. Pi x: T. Pi xs: Vect T k. m n xs -> m (succ n) (cons x xs)) ->
+		   m zero nil ->
+		   Pi v: Vect T n. m n v;
+vectElim = todo;
+
+foldr : {T: TYPE, U: TYPE} (T -> U -> U) -> U -> Vect T n -> U;
+foldr = vectElim m;
+
+vectToList : {n: Nat, T: TYPE} Vect T n -> List T;
+vectToList = foldr cons nil;
