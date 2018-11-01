@@ -6,7 +6,8 @@ import silver:langutil:pp;
 import silver:util:raw:treemap as rtm;
 import silver:util:raw:treemap only Map;
 
-closed nonterminal Subst;
+-- TODO: Probably remove more closed :P
+nonterminal Subst;
 
 nonterminal Constraint with pp, solve;
 synthesized attribute solve :: Pair<[Constraint] [Subst]>;

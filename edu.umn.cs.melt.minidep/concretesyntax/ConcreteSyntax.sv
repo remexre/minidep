@@ -23,6 +23,8 @@ top::Root_c ::= decls::Decls_c
 
 nonterminal Decls_c with ast<Decls>, errors, location, pp;
 
+-- TODO: Layout to not need semicolons
+-- http://melt.cs.umn.edu/silver/ref/decl/productions/concrete/#layout
 concrete production declsConsClaim_c
 top::Decls_c ::= name::Name_t ':' imps::ImplicitTys_c ty::Expr1_c ';' tl::Decls_c
 {
