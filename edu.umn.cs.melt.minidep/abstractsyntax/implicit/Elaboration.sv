@@ -109,13 +109,13 @@ aspect production spined:implicitsCons
 top::spined:Implicits ::= n::String e::spined:Expr t::spined:Implicits
 {
   top.sorted = case t of
-  | implicitsCons(n2, e2, t2) ->
+  | spined:implicitsCons(n2, e2, t2) ->
       if n < n2
       then spined:exprsCons(e, t.sorted, location=e.location)
       else spined:exprsCons(e2, spined:implicitsCons(n, e, t2, location=top.location).sorted,
                             location=e2.location)
-  | implicitsNil() -> spined:exprsCons(e, spined:exprsNil(location=e.location),
-                                       location=e.location)
+  | spined:implicitsNil() -> spined:exprsCons(e, spined:exprsNil(location=e.location),
+                                              location=e.location)
   end;
 }
 
