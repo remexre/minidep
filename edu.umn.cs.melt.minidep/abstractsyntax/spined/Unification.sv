@@ -3,17 +3,14 @@ grammar edu:umn:cs:melt:minidep:abstractsyntax:spined;
 import edu:umn:cs:melt:minidep:concretesyntax only pp;
 import silver:langutil;
 import silver:langutil:pp;
-import silver:util:raw:treemap as rtm;
-import silver:util:raw:treemap only Map;
 
--- TODO: Probably remove more closed :P
 nonterminal Subst;
 
-nonterminal Constraint with pp, solve;
+closed nonterminal Constraint with pp, solve;
 synthesized attribute solve :: Pair<[Constraint] [Subst]>;
 
 abstract production constraintEq
-top::Constraint ::= l::Decorated Expr r::Decorated Expr
+top::Constraint ::= l::Expr r::Expr
 {
   top.pp = ppConcat(
     [ l.expr5_c.pp
@@ -23,51 +20,8 @@ top::Constraint ::= l::Decorated Expr r::Decorated Expr
   top.solve = error("TODO Solve " ++ show(80, top.pp));
 }
 
-abstract production constraintHasTy
-top::Constraint ::= l::Decorated Expr r::Decorated Expr
-{
-  top.pp = ppConcat(
-    [ l.expr5_c.pp
-    , text(" ?: ")
-    , r.expr5_c.pp
-    ]);
-  top.solve = case l, r of
-  | call(f, xs), r -> error("Not a pi type: " ++ show(80, r.expr1_c.pp))
-  | var(name, imps), _ ->
-      case lookupBy(stringEq, name, error("env")) of
-      | just(just(sig(imps, ty))) -> error("TODO jj in hasTy")
-      | just(nothing()) -> error("TODO jn in hasTy")
-      | nothing() -> error("TODO n in hasTy")
-      end
-  | _, _ -> error("TODO Solve " ++ show(80, top.pp))
-  end;
-}
-
-abstract production constraintIsPiArg
-top::Constraint ::= f::Decorated Expr x::Decorated Expr
-{
-  top.pp = ppConcat(
-    [ f.expr5_c.pp
-    , text(" ?= Pi _:")
-    , x.expr2_c.pp
-    , text(". _")
-    ]);
-  top.solve = error("TODO Solve " ++ show(80, top.pp));
-}
-
-abstract production constraintIsPiRet
-top::Constraint ::= f::Decorated Expr y::Decorated Expr
-{
-  top.pp = ppConcat(
-    [ f.expr5_c.pp
-    , text(" ?= Pi _:_. ")
-    , y.expr1_c.pp
-    ]);
-  top.solve = error("TODO Solve " ++ show(80, top.pp));
-}
-
-synthesized attribute constraints :: [Constraint] occurs on Decl, Decls, Expr, Signature;
-synthesized attribute hasVars :: Boolean occurs on Decl, Decls, Expr, Signature;
+synthesized attribute constraints :: [Constraint] with ++;
+synthesized attribute hasVars :: Boolean occurs on Decl, Decls, Expr, Exprs, Signature;
 
 synthesized attribute substDecls :: (Decls ::= Subst) occurs on Decls;
 synthesized attribute unified :: Decls occurs on Decls;
@@ -95,86 +49,141 @@ Decls ::= ss::[Subst] ds::Decls
 aspect production declsCons
 top::Decls ::= h::Decl t::Decls
 {
-  top.constraints = h.constraints ++ t.constraints;
+  top.constraints := h.constraints ++ t.constraints;
   top.hasVars = h.hasVars || t.hasVars;
   top.unified = solveAll(top.constraints, top);
+
+  top.substDecls = \s::Subst -> error("TODO");
 }
 
 aspect production declsNil
 top::Decls ::=
 {
-  top.constraints = [];
+  top.constraints := [];
   top.hasVars = false;
   top.unified = declsNil();
-}
 
-function implicitsConstraints
-[Constraint] ::= implicits::Map<String Expr>
-{
-  return flatMap(\p::Pair<String Expr> -> p.snd.constraints,
-    rtm:toList(implicits));
+  top.substDecls = \s::Subst -> top;
 }
 
 function implicitsHaveVars
-Boolean ::= implicits::Map<String Expr>
+Boolean ::= implicits::Implicits
 {
   return foldr(\p::Pair<String Expr> has::Boolean -> has || p.snd.hasVars,
-    false, rtm:toList(implicits));
+    false, implicits.asList);
 }
 
 synthesized attribute substSignature :: (Signature ::= Subst) occurs on Signature;
 
 aspect production sig
-top::Signature ::= implicits::Map<String Expr> ty::Expr
+top::Signature ::= implicits::Implicits ty::Expr
 {
-  top.constraints = implicitsConstraints(implicits) ++ ty.constraints;
+  top.constraints := implicits.constraints ++ ty.constraints;
   top.hasVars = implicitsHaveVars(implicits) || ty.hasVars;
+
+  top.substSignature = \s::Subst -> error("TODO");
 }
 
 synthesized attribute substDecl :: (Decl ::= Subst) occurs on Decl;
 
 aspect production decl
-top::Decl ::= name::String implicits::Map<String Expr> ty::Expr body::Expr
+top::Decl ::= name::String implicits::Implicits ty::Expr body::Expr
 {
-  top.constraints = implicitsConstraints(implicits) ++ ty.constraints ++ body.constraints ++
-    [ constraintHasTy(body, ty)
-    ];
+  ty.inhTy = nothing();
+  body.inhTy = just(ty);
+  ty.inhTyEnv = implicits.asList;
+  body.inhTyEnv = implicits.asList;
+
+  top.constraints := implicits.constraints ++ ty.constraints ++ body.constraints;
   top.hasVars = implicitsHaveVars(implicits) || ty.hasVars || body.hasVars;
+
+  top.substDecl = \s::Subst -> error("TODO");
 }
 
+synthesized attribute substImplicits :: (Implicits ::= Subst) occurs on Implicits;
+
+aspect production implicitsCons
+top::Implicits ::= name::String ex::Expr tl::Implicits
+{
+  top.constraints := ex.constraints ++ tl.constraints;
+
+  top.substImplicits = \s::Subst -> error("TODO");
+}
+
+aspect production implicitsNil
+top::Implicits ::=
+{
+  top.constraints := [];
+
+  top.substImplicits = \s::Subst -> error("TODO");
+}
+
+synthesized attribute substExprs :: (Exprs ::= Subst) occurs on Exprs;
+
+aspect production exprsCons
+top::Exprs ::= hd::Expr tl::Exprs
+{
+  top.constraints := hd.constraints ++ tl.constraints;
+  top.hasVars = hd.hasVars || tl.hasVars;
+
+  top.substExprs = \s::Subst -> error("TODO");
+}
+
+aspect production exprsNil
+top::Exprs ::=
+{
+  top.constraints := [];
+  top.hasVars = false;
+
+  top.substExprs = \s::Subst -> error("TODO");
+}
+
+inherited attribute inhTy :: Maybe<Expr> occurs on Expr;
+autocopy attribute inhTyEnv :: [Pair<String Expr>] occurs on Expr;
 synthesized attribute substExpr :: (Expr ::= Subst) occurs on Expr;
+synthesized attribute synTy :: Expr occurs on Expr;
+
+aspect default production
+top::Expr ::=
+{
+  top.constraints <- case top.inhTy of
+  | just(ty) -> [constraintEq(top.synTy, ty)]
+  | nothing() -> []
+  end;
+
+  top.synTy = error("TODO");
+  top.substExpr = \s::Subst -> error("TODO");
+}
 
 aspect production call
-top::Expr ::= f::Expr xs::[Expr]
+top::Expr ::= f::String xs::Exprs
 {
-  top.constraints = f.constraints ++ flatMap((.constraints), xs);
-  top.hasVars = foldr(\ex::Expr has::Boolean -> has || ex.hasVars, f.hasVars, xs);
+  top.constraints := xs.constraints;
+  top.hasVars = xs.hasVars;
 }
 
 aspect production lam
 top::Expr ::= name::String body::Expr
 {
-  top.constraints = body.constraints;
+  body.inhTy = case top.inhTy of
+  | just(pi(nothing(), _, t)) -> just(t)
+  | nothing() -> nothing()
+  end;
+
+  top.constraints := body.constraints;
   top.hasVars = body.hasVars;
 }
 
 aspect production pi
 top::Expr ::= name::Maybe<String> l::Expr r::Expr
 {
-  top.constraints = l.constraints ++ r.constraints;
+  top.constraints := l.constraints ++ r.constraints;
   top.hasVars = l.hasVars || r.hasVars;
 }
 
 aspect production unificationVar
 top::Expr ::= id::Integer
 {
-  top.constraints = [];
+  top.constraints := [];
   top.hasVars = true;
-}
-
-aspect production var
-top::Expr ::= name::String implicits::Map<String Expr>
-{
-  top.constraints = implicitsConstraints(implicits);
-  top.hasVars = implicitsHaveVars(implicits);
 }

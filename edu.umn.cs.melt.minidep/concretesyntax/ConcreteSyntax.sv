@@ -23,7 +23,7 @@ top::Root_c ::= decls::Decls_c
 
 nonterminal Decls_c with ast<Decls>, errors, location, pp;
 
--- TODO: Layout to not need semicolons
+-- TODO: Use `layout` to not need semicolons
 -- http://melt.cs.umn.edu/silver/ref/decl/productions/concrete/#layout
 concrete production declsConsClaim_c
 top::Decls_c ::= name::Name_t ':' imps::ImplicitTys_c ty::Expr1_c ';' tl::Decls_c
@@ -198,7 +198,7 @@ top::Expr5_c ::= e::Name_t
 }
 
 concrete production varImplicits_c
-top::Expr5_c ::= e::Name_t '{' h::ImplicitVal_c t::ImplicitVals_c '}'
+top::Expr2_c ::= e::Name_t '{' h::ImplicitVal_c t::ImplicitVals_c '}'
 {
   top.ast = var(e.lexeme,
                 implicitsCons(h.ast.fst, h.ast.snd, t.ast,

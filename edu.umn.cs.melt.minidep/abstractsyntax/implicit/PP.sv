@@ -102,14 +102,17 @@ aspect production var
 top::Expr ::= name::String implicits::Implicits
 {
   top.expr1_c = expr12_c(top.expr2_c, location=top.location);
-  top.expr2_c = expr23_c(top.expr3_c, location=top.location);
   top.expr3_c = expr34_c(top.expr4_c, location=top.location);
   top.expr4_c = expr45_c(top.expr5_c, location=top.location);
   
   local name_t :: Name_t = terminal(Name_t, name, top.location);
-  top.expr5_c = case implicits of
+  top.expr2_c = case implicits of
   | implicitsCons(_, _, t) -> varImplicits_c(name_t, '{', implicits.implicitVal_c,
       t.implicitVals_c, '}', location=top.location)
+  | implicitsNil() -> expr23_c(top.expr3_c, location=top.location)
+  end;
+  top.expr5_c = case implicits of
+  | implicitsCons(_, _, _) -> parens_c('(', top.expr1_c, ')', location=top.location)
   | implicitsNil() -> var_c(name_t, location=top.location)
   end;
 }

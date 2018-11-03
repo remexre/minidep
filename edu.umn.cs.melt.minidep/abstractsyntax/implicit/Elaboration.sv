@@ -1,10 +1,9 @@
 grammar edu:umn:cs:melt:minidep:abstractsyntax:implicit;
 
 import edu:umn:cs:melt:minidep:abstractsyntax:spined as spined;
+import edu:umn:cs:melt:minidep:abstractsyntax:spined only append;
 import edu:umn:cs:melt:minidep:util;
 import silver:langutil;
-import silver:util:raw:treemap as rtm;
-import silver:util:raw:treemap only Map;
 import silver:util:raw:treeset as set;
 
 synthesized attribute elaboratedDecls :: spined:Decls occurs on Decls;
@@ -35,31 +34,30 @@ top::Decl ::= name::String implicits::Implicits ty::Expr body::Expr
                                    location=top.location);
 }
 
-synthesized attribute elaboratedImplicits :: Map<String spined:Expr> occurs on Implicits;
+synthesized attribute elaboratedImplicits :: spined:Implicits occurs on Implicits;
 
-aspect default production
+aspect production implicitsCons
+top::Implicits ::= n::String e::Expr t::Implicits
+{
+  top.elaboratedImplicits = spined:implicitsCons(n, e.elaboratedExpr,
+    t.elaboratedImplicits, location=top.location);
+}
+
+aspect production implicitsNil
 top::Implicits ::=
 {
-  top.elaboratedImplicits = rtm:add(map(
-    \p::Pair<String Decorated Expr> -> pair(p.fst, p.snd.elaboratedExpr),
-    top.asList), rtm:empty(compareString));
+  top.elaboratedImplicits = spined:implicitsNil(location=top.location);
 }
 
 synthesized attribute elaboratedExpr :: spined:Expr occurs on Expr;
-synthesized attribute asArg :: (spined:Expr ::= [Decorated Expr]) occurs on Expr;
-
-aspect default production
-top::Expr ::=
-{
-  top.asArg = \xs::[Decorated Expr] -> spined:call(top.elaboratedExpr,
-    map((.elaboratedExpr), xs), location=top.location);
-}
 
 aspect production app
 top::Expr ::= f::Expr x::Expr
 {
-  top.asArg = \xs::[Decorated Expr] -> f.asArg(cons(x, xs));
-  top.elaboratedExpr = top.asArg([]);
+  local e :: spined:Expr = f.elaboratedExpr;
+  top.elaboratedExpr = case e of
+  | spined:call(f, xs) -> spined:call(f, xs.append(x.elaboratedExpr), location=e.location)
+  end;
 }
 
 aspect production lam
@@ -95,13 +93,34 @@ top::Expr ::= name::String implicits::Implicits
   | ns -> [err(implicits.location, "Extra implicits: " ++ implode(", ", ns))]
   end;
 
-  local missingImplicits :: [Pair<String spined:Expr>] = map(
-    \n :: String -> pair(n, spined:unificationVar(genInt(), location=top.location)),
-    set:toList(set:difference(wanted, implicits.names)));
-  local allImplicits :: Map<String spined:Expr> =
-    rtm:add(missingImplicits, rtm:add(map(
-      \p::Pair<String Decorated Expr> -> pair(p.fst, p.snd.elaboratedExpr),
-      implicits.asList), rtm:empty(compareString)));
+  local allImplicits :: spined:Exprs = foldr(
+    \n::String tl::spined:Implicits ->
+      spined:implicitsCons(n, spined:unificationVar(genInt(), location=top.location),
+                           tl, location=top.location),
+    implicits.elaboratedImplicits,
+    set:toList(set:difference(wanted, implicits.names))).sorted;
 
-  top.elaboratedExpr = spined:var(name, allImplicits, location=top.location);
+  top.elaboratedExpr = spined:call(name, allImplicits, location=top.location);
+}
+
+synthesized attribute sorted :: spined:Exprs occurs on spined:Implicits; -- :(
+
+aspect production spined:implicitsCons
+top::spined:Implicits ::= n::String e::spined:Expr t::spined:Implicits
+{
+  top.sorted = case t of
+  | implicitsCons(n2, e2, t2) ->
+      if n < n2
+      then spined:exprsCons(e, t.sorted, location=e.location)
+      else spined:exprsCons(e2, spined:implicitsCons(n, e, t2, location=top.location).sorted,
+                            location=e2.location)
+  | implicitsNil() -> spined:exprsCons(e, spined:exprsNil(location=e.location),
+                                       location=e.location)
+  end;
+}
+
+aspect production spined:implicitsNil
+top::spined:Implicits ::=
+{
+  top.sorted = spined:exprsNil(location=top.location);
 }

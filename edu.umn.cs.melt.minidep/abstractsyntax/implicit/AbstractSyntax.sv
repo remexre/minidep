@@ -6,7 +6,7 @@ import silver:util:raw:treeset as set;
 
 autocopy attribute env :: [Pair<String Maybe<Signature>>];
 
-closed nonterminal Decls with asList<Decl>, env, errors, pp;
+nonterminal Decls with asList<Decl>, env, errors, pp;
 
 abstract production declsCons
 top::Decls ::= h::Decl t::Decls
@@ -22,7 +22,7 @@ top::Decls ::=
   top.errors := [];
 }
 
-closed nonterminal Signature with env;
+nonterminal Signature with env;
 
 abstract production sig
 top::Signature ::= implicits::Implicits ty::Expr
@@ -38,7 +38,7 @@ top::Decl ::= name::String implicits::Implicits ty::Expr body::Expr
   top.sigs = [pair(name, sig(implicits, ty))];
 }
 
-closed nonterminal Implicits with asList<Pair<String Decorated Expr>>, env, errors, location, names;
+nonterminal Implicits with asList<Pair<String Decorated Expr>>, env, errors, location, names;
 synthesized attribute names :: set:Set<String>;
 
 abstract production implicitsCons
