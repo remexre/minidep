@@ -2,9 +2,7 @@ grammar edu:umn:cs:melt:minidep:abstractsyntax:spined;
 
 import silver:langutil;
 
-autocopy attribute env :: [Pair<String Maybe<Signature>>];
-
-nonterminal Decls with constraints, env, errors, pp;
+nonterminal Decls with constraints, errors, pp;
 
 abstract production declsCons
 top::Decls ::= h::Decl t::Decls
@@ -18,28 +16,25 @@ top::Decls ::=
   top.errors := [];
 }
 
-nonterminal Signature with constraints;
-
-abstract production sig
-top::Signature ::= implicits::Implicits ty::Expr
-{}
-
-nonterminal Decl with constraints, env, errors, location, sigs;
-synthesized attribute sigs :: [Pair<String Signature>];
+nonterminal Decl with constraints, errors, location;
 
 abstract production decl
 top::Decl ::= name::String implicits::Implicits ty::Expr body::Expr
 {
   top.errors := ty.errors ++ body.errors;
   top.errors <- flatMap(
-    \p::Pair<String Expr> -> p.snd.errors,
+    \p::Pair<String Expr> -> (decorate p.snd with {
+      inhTyEnv = top.inhTyEnv;
+    }).errors,
     implicits.asList);
-  top.sigs = [pair(name, sig(implicits, ty))];
 }
 
-nonterminal Implicits with asList<Pair<String Expr>>, constraints, errors, implicitNames, location;
+nonterminal Implicits with asList<Pair<String Expr>>, constraints, errors, implicitNames, location,
+                           sorted;
 synthesized attribute asList<a> :: [a];
 synthesized attribute implicitNames :: [String];
+synthesized attribute sorted :: Exprs; -- :(
+
 
 abstract production implicitsCons
 top::Implicits ::= name::String ex::Expr tl::Implicits
@@ -50,6 +45,14 @@ top::Implicits ::= name::String ex::Expr tl::Implicits
     then [err(top.location, "Duplicate implicit name: " ++ name)]
     else [];
   top.implicitNames = (name :: tl.implicitNames);
+  top.sorted = case tl of
+  | implicitsCons(name2, ex2, tl2) ->
+      if name < name2
+      then exprsCons(ex, tl.sorted, location=ex.location)
+      else exprsCons(ex2, implicitsCons(name, ex, tl2, location=top.location).sorted,
+                     location=ex2.location)
+  | implicitsNil() -> exprsCons(ex, exprsNil(location=ex.location), location=ex.location)
+  end;
 }
 
 abstract production implicitsNil
@@ -58,9 +61,10 @@ top::Implicits ::=
   top.asList = [];
   top.errors := [];
   top.implicitNames = [];
+  top.sorted = exprsNil(location=top.location);
 }
 
-nonterminal Exprs with append, asList<Expr>, constraints, env, errors, location;
+nonterminal Exprs with append, asList<Expr>, constraints, errors, location;
 synthesized attribute append :: (Exprs ::= Expr);
 
 abstract production exprsCons
@@ -79,7 +83,7 @@ top::Exprs ::=
   top.errors := [];
 }
 
-nonterminal Expr with constraints, env, errors, location;
+nonterminal Expr with constraints, errors, location;
 
 abstract production call
 top::Expr ::= f::String xs::Exprs

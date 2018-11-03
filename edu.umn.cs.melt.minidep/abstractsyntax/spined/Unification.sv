@@ -1,6 +1,7 @@
 grammar edu:umn:cs:melt:minidep:abstractsyntax:spined;
 
 import edu:umn:cs:melt:minidep:concretesyntax only pp;
+import edu:umn:cs:melt:minidep:util;
 import silver:langutil;
 import silver:langutil:pp;
 
@@ -14,14 +15,15 @@ top::Constraint ::= l::Expr r::Expr
 {
   top.pp = ppConcat(
     [ l.expr5_c.pp
-    , text(" ?= ")
+    , text(" ~ ")
     , r.expr5_c.pp
     ]);
   top.solve = error("TODO Solve " ++ show(80, top.pp));
 }
 
+autocopy attribute inhTyEnv :: [Pair<String Expr>] occurs on Decl, Decls, Expr, Exprs, Implicits;
 synthesized attribute constraints :: [Constraint] with ++;
-synthesized attribute hasVars :: Boolean occurs on Decl, Decls, Expr, Exprs, Signature;
+synthesized attribute hasVars :: Boolean occurs on Decl, Decls, Expr, Exprs;
 
 synthesized attribute substDecls :: (Decls ::= Subst) occurs on Decls;
 synthesized attribute unified :: Decls occurs on Decls;
@@ -53,7 +55,7 @@ top::Decls ::= h::Decl t::Decls
   top.hasVars = h.hasVars || t.hasVars;
   top.unified = solveAll(top.constraints, top);
 
-  top.substDecls = \s::Subst -> error("TODO");
+  top.substDecls = \s::Subst -> error("TODO substDecls");
 }
 
 aspect production declsNil
@@ -73,17 +75,6 @@ Boolean ::= implicits::Implicits
     false, implicits.asList);
 }
 
-synthesized attribute substSignature :: (Signature ::= Subst) occurs on Signature;
-
-aspect production sig
-top::Signature ::= implicits::Implicits ty::Expr
-{
-  top.constraints := implicits.constraints ++ ty.constraints;
-  top.hasVars = implicitsHaveVars(implicits) || ty.hasVars;
-
-  top.substSignature = \s::Subst -> error("TODO");
-}
-
 synthesized attribute substDecl :: (Decl ::= Subst) occurs on Decl;
 
 aspect production decl
@@ -97,7 +88,7 @@ top::Decl ::= name::String implicits::Implicits ty::Expr body::Expr
   top.constraints := implicits.constraints ++ ty.constraints ++ body.constraints;
   top.hasVars = implicitsHaveVars(implicits) || ty.hasVars || body.hasVars;
 
-  top.substDecl = \s::Subst -> error("TODO");
+  top.substDecl = \s::Subst -> error("TODO substDecl");
 }
 
 synthesized attribute substImplicits :: (Implicits ::= Subst) occurs on Implicits;
@@ -105,9 +96,10 @@ synthesized attribute substImplicits :: (Implicits ::= Subst) occurs on Implicit
 aspect production implicitsCons
 top::Implicits ::= name::String ex::Expr tl::Implicits
 {
+  ex.inhTy = nothing();
   top.constraints := ex.constraints ++ tl.constraints;
 
-  top.substImplicits = \s::Subst -> error("TODO");
+  top.substImplicits = \s::Subst -> error("TODO substImplicits implicitsCons");
 }
 
 aspect production implicitsNil
@@ -115,10 +107,12 @@ top::Implicits ::=
 {
   top.constraints := [];
 
-  top.substImplicits = \s::Subst -> error("TODO");
+  top.substImplicits = \s::Subst -> error("TODO substImplicits implicitsNil");
 }
 
+inherited attribute inhTys :: [Maybe<Expr>] occurs on Exprs;
 synthesized attribute substExprs :: (Exprs ::= Subst) occurs on Exprs;
+synthesized attribute synTys :: Exprs occurs on Exprs;
 
 aspect production exprsCons
 top::Exprs ::= hd::Expr tl::Exprs
@@ -126,7 +120,18 @@ top::Exprs ::= hd::Expr tl::Exprs
   top.constraints := hd.constraints ++ tl.constraints;
   top.hasVars = hd.hasVars || tl.hasVars;
 
-  top.substExprs = \s::Subst -> error("TODO");
+  top.errors <- case top.inhTys of
+  | _::_ -> []
+  | [] -> [err(top.location, "Too many arguments provided?")]
+  end;
+  hd.inhTy = head(top.inhTys);
+  tl.inhTys = case top.inhTys of
+  | _::t -> t
+  | [] -> []
+  end;
+  top.synTys = exprsCons(hd.synTy, tl.synTys, location=builtin());
+
+  top.substExprs = \s::Subst -> error("TODO substExprs exprsCons");
 }
 
 aspect production exprsNil
@@ -135,30 +140,40 @@ top::Exprs ::=
   top.constraints := [];
   top.hasVars = false;
 
-  top.substExprs = \s::Subst -> error("TODO");
+  top.errors <- case top.inhTys of
+  | _::_ -> [err(top.location, "Eta-expansion needed?")]
+  | [] -> []
+  end;
+  top.synTys = exprsNil(location=builtin());
+
+  top.substExprs = \s::Subst -> error("TODO substExprs exprsNil");
 }
 
 inherited attribute inhTy :: Maybe<Expr> occurs on Expr;
-autocopy attribute inhTyEnv :: [Pair<String Expr>] occurs on Expr;
 synthesized attribute substExpr :: (Expr ::= Subst) occurs on Expr;
 synthesized attribute synTy :: Expr occurs on Expr;
 
 aspect default production
 top::Expr ::=
 {
-  top.constraints <- case top.inhTy of
-  | just(ty) -> [constraintEq(top.synTy, ty)]
-  | nothing() -> []
-  end;
-
-  top.synTy = error("TODO");
-  top.substExpr = \s::Subst -> error("TODO");
+  top.synTy = error("TODO synTy");
+  top.substExpr = \s::Subst -> error("TODO substExpr");
 }
 
 aspect production call
 top::Expr ::= f::String xs::Exprs
 {
-  top.constraints := xs.constraints;
+  xs.inhTys = case lookupBy(stringEq, f, top.inhTyEnv) of
+  | just(t) -> error("TODO call inhTys just")
+  | nothing() -> []
+  end;
+
+  top.constraints := case top.inhTy of
+  | just(ty) -> [constraintEq(top.synTy, ty)]
+  | nothing() -> []
+  end;
+
+  top.constraints <- xs.constraints;
   top.hasVars = xs.hasVars;
 }
 
@@ -169,15 +184,30 @@ top::Expr ::= name::String body::Expr
   | just(pi(nothing(), _, t)) -> just(t)
   | nothing() -> nothing()
   end;
+  body.inhTyEnv = error("TODO lam inhTyEnv");
 
-  top.constraints := body.constraints;
+  top.constraints := case top.inhTy of
+  | just(ty) -> [constraintEq(top.synTy, ty)]
+  | nothing() -> []
+  end;
+
+  top.constraints <- body.constraints;
   top.hasVars = body.hasVars;
 }
 
 aspect production pi
 top::Expr ::= name::Maybe<String> l::Expr r::Expr
 {
-  top.constraints := l.constraints ++ r.constraints;
+  l.inhTy = nothing();
+  r.inhTy = nothing();
+  r.inhTyEnv = error("TODO pi inhTyEnv");
+
+  top.constraints := case top.inhTy of
+  | just(ty) -> [constraintEq(top.synTy, ty)]
+  | nothing() -> []
+  end;
+
+  top.constraints <- l.constraints ++ r.constraints;
   top.hasVars = l.hasVars || r.hasVars;
 }
 
@@ -186,4 +216,8 @@ top::Expr ::= id::Integer
 {
   top.constraints := [];
   top.hasVars = true;
+  top.synTy = case top.inhTy of
+  | just(ty) -> ty
+  | nothing() -> error("Cannot infer type of ?" ++ toString(id))
+  end;
 }

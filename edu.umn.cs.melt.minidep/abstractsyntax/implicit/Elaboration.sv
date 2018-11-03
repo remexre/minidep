@@ -1,7 +1,7 @@
 grammar edu:umn:cs:melt:minidep:abstractsyntax:implicit;
 
 import edu:umn:cs:melt:minidep:abstractsyntax:spined as spined;
-import edu:umn:cs:melt:minidep:abstractsyntax:spined only append;
+import edu:umn:cs:melt:minidep:abstractsyntax:spined only append, sorted;
 import edu:umn:cs:melt:minidep:util;
 import silver:langutil;
 import silver:util:raw:treeset as set;
@@ -22,6 +22,14 @@ aspect production declsNil
 top::Decls ::=
 {
   top.elaboratedDecls = spined:declsNil();
+}
+
+synthesized attribute elaboratedExpr :: spined:Expr occurs on Expr, Signature;
+
+aspect production sig
+top::Signature ::= implicits::Implicits ty::Expr
+{
+  top.elaboratedExpr = error("TODO");
 }
 
 synthesized attribute elaboratedDecl :: spined:Decl occurs on Decl;
@@ -48,8 +56,6 @@ top::Implicits ::=
 {
   top.elaboratedImplicits = spined:implicitsNil(location=top.location);
 }
-
-synthesized attribute elaboratedExpr :: spined:Expr occurs on Expr;
 
 aspect production app
 top::Expr ::= f::Expr x::Expr
@@ -101,26 +107,4 @@ top::Expr ::= name::String implicits::Implicits
     set:toList(set:difference(wanted, implicits.names))).sorted;
 
   top.elaboratedExpr = spined:call(name, allImplicits, location=top.location);
-}
-
-synthesized attribute sorted :: spined:Exprs occurs on spined:Implicits; -- :(
-
-aspect production spined:implicitsCons
-top::spined:Implicits ::= n::String e::spined:Expr t::spined:Implicits
-{
-  top.sorted = case t of
-  | spined:implicitsCons(n2, e2, t2) ->
-      if n < n2
-      then spined:exprsCons(e, t.sorted, location=e.location)
-      else spined:exprsCons(e2, spined:implicitsCons(n, e, t2, location=top.location).sorted,
-                            location=e2.location)
-  | spined:implicitsNil() -> spined:exprsCons(e, spined:exprsNil(location=e.location),
-                                              location=e.location)
-  end;
-}
-
-aspect production spined:implicitsNil
-top::spined:Implicits ::=
-{
-  top.sorted = spined:exprsNil(location=top.location);
 }

@@ -4,7 +4,7 @@ import core:monad;
 import edu:umn:cs:melt:minidep:abstractsyntax:implicit;
 import edu:umn:cs:melt:minidep:abstractsyntax:implicit as implicit;
 import edu:umn:cs:melt:minidep:abstractsyntax:spined as spined;
-import edu:umn:cs:melt:minidep:abstractsyntax:spined only hasVars, unified;
+import edu:umn:cs:melt:minidep:abstractsyntax:spined only constraints, hasVars, unified;
 import edu:umn:cs:melt:minidep:concretesyntax only Root_c, ast;
 import edu:umn:cs:melt:minidep:util;
 import silver:langutil;
@@ -49,8 +49,11 @@ IOVal<Integer> ::= args::[String] ioIn::IO
                                     location=builtin()),
                       location=builtin())))
     ]);
-  local spinedDefaultEnv :: [Pair<String Maybe<spined:Signature>>] = map(
-    \p::Pair<String Maybe<implicit:Signature>> -> error("TODO"),
+  local spinedDefaultEnv :: [Pair<String spined:Expr>] = flatMap(
+    \p::Pair<String Maybe<implicit:Signature>> -> case p.snd of
+                                                  | just(s) -> [pair(p.fst, s.elaboratedExpr)]
+                                                  | nothing() -> []
+                                                  end,
     defaultEnv);
 
   return evalIO(do (bindIO, returnIO) {
@@ -79,17 +82,21 @@ IOVal<Integer> ::= args::[String] ioIn::IO
             return 1;
           } else {
             printM("\nast pp (pre-elaboration):\n" ++ show(80, astPreElaboration.pp));
-            astPreUnification :: Decorated spined:Decls = decorate astPreElaboration.elaboratedDecls with {
-              -- env = defaultEnv;
-            };
+            astPreUnification :: Decorated spined:Decls =
+              decorate astPreElaboration.elaboratedDecls with {
+                spined:inhTyEnv = spinedDefaultEnv;
+              };
             if !null(astPreUnification.errors) then {
               printM(messagesToString(astPreUnification.errors) ++ "\n");
               return 1;
             } else {
-              printM("\nast pp (pre-unification):\n" ++ show(80, astPreUnification.pp));
-              astPostUnification :: Decorated spined:Decls = decorate astPreUnification.unified with {
-                spined:env = spinedDefaultEnv;
-              };
+              printM("ast pp (pre-unification):\n" ++ show(80, astPreUnification.pp));
+              printM("ast constraints:\n" ++ show(80, ppImplode(line(),
+                map((.pp), astPreUnification.constraints))));
+              astPostUnification :: Decorated spined:Decls =
+                decorate astPreUnification.unified with {
+                  spined:inhTyEnv = spinedDefaultEnv;
+                };
               if !null(astPostUnification.errors) then {
                 printM(messagesToString(astPostUnification.errors) ++ "\n");
                 return 1;
