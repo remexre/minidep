@@ -3,8 +3,8 @@ grammar edu:umn:cs:melt:minidep:compiler;
 import core:monad;
 import edu:umn:cs:melt:minidep:abstractsyntax:implicit;
 import edu:umn:cs:melt:minidep:abstractsyntax:implicit as implicit;
-import edu:umn:cs:melt:minidep:abstractsyntax:spined as spined;
-import edu:umn:cs:melt:minidep:abstractsyntax:spined only constraints, hasVars, unified;
+import edu:umn:cs:melt:minidep:abstractsyntax:unification as unification;
+import edu:umn:cs:melt:minidep:abstractsyntax:unification only constraints, hasVars, unified;
 import edu:umn:cs:melt:minidep:concretesyntax only Root_c, ast;
 import edu:umn:cs:melt:minidep:util;
 import silver:langutil;
@@ -54,7 +54,7 @@ IOVal<Integer> ::= args::[String] ioIn::IO
         env = l;
       })) :: l,
     [], defaultEnv);
-  local spinedDefaultEnv :: [Pair<String Maybe<spined:Expr>>] = map(
+  local spinedDefaultEnv :: [Pair<String Maybe<unification:Expr>>] = map(
     \p::Pair<String Maybe<Decorated implicit:Signature>> ->
       case p.snd of
       | just(s) -> pair(p.fst, just(s.elaboratedExpr))
@@ -88,9 +88,9 @@ IOVal<Integer> ::= args::[String] ioIn::IO
             return 1;
           } else {
             printM("\nast pp (pre-elaboration):\n" ++ show(80, astPreElaboration.pp));
-            astPreUnification :: Decorated spined:Decls =
+            astPreUnification :: Decorated unification:Decls =
               decorate astPreElaboration.elaboratedDecls with {
-                spined:inhTyEnv = spinedDefaultEnv;
+                unification:inhTyEnv = spinedDefaultEnv;
               };
             printM("ast pp (pre-unification):\n" ++ show(80, astPreUnification.pp));
             if !null(astPreUnification.errors) then {
@@ -98,11 +98,11 @@ IOVal<Integer> ::= args::[String] ioIn::IO
               return 1;
             } else {
               printM("ast constraints:\n" ++ show(80, ppConcat(map(
-                \c::spined:Constraint -> cat(c.pp, line()),
+                \c::unification:Constraint -> cat(c.pp, line()),
                 astPreUnification.constraints))));
-              astPostUnification :: Decorated spined:Decls =
+              astPostUnification :: Decorated unification:Decls =
                 decorate astPreUnification.unified with {
-                  spined:inhTyEnv = spinedDefaultEnv;
+                  unification:inhTyEnv = spinedDefaultEnv;
                 };
               if !null(astPostUnification.errors) then {
                 printM(messagesToString(astPostUnification.errors) ++ "\n");

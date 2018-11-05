@@ -1,4 +1,4 @@
-grammar edu:umn:cs:melt:minidep:abstractsyntax:spined;
+grammar edu:umn:cs:melt:minidep:abstractsyntax:unification;
 
 import edu:umn:cs:melt:minidep:concretesyntax;
 import silver:langutil;
@@ -34,15 +34,11 @@ ImplicitTyList_c ::= l::[Pair<String Expr>] loc::Location
 }
 
 aspect production decl
-top::Decl ::= name::String implicits::Implicits ty::Expr body::Expr
+top::Decl ::= name::String ty::Expr body::Expr
 {
   local name_t :: Name_t = terminal(Name_t, name, top.location);
-  local imps :: ImplicitTys_c = if !null(implicits.asList) then
-    implicitTysSome_c('{', asImplicitTy_c(head(implicits.asList), top.location),
-      asImplicitTyList_c(tail(implicits.asList), top.location), '}', location=top.location)
-  else
-    implicitTysNone_c(location=top.location);
-  top.decls_c = declsConsClaim_c(name_t, ':', imps, ty.expr1_c, ';',
+  top.decls_c = declsConsClaim_c(name_t, ':', implicitTysNone_c(location=top.location), ty.expr1_c,
+    ';',
     declsConsDef_c(name_t, '=', body.expr1_c, ';',
       declsNil_c(location=top.location),
       location=top.location),
@@ -62,29 +58,14 @@ top::Expr ::=
   top.pp = parens(top.expr1_c.pp);
 }
 
-function callAsApps
-Expr4_c ::= f::Expr4_c xs::Exprs loc::Location
-{
-  return case xs of
-  | exprsCons(hd, tl) -> callAsApps(app_c(f, hd.expr5_c, location=loc), tl, loc)
-  | exprsNil() -> f
-  end;
-}
-
-aspect production call
-top::Expr ::= f::String xs::Exprs
+aspect production app
+top::Expr ::= f::Expr x::Expr
 {
   top.expr1_c = expr12_c(top.expr2_c, location=top.location);
   top.expr2_c = expr23_c(top.expr3_c, location=top.location);
   top.expr3_c = expr34_c(top.expr4_c, location=top.location);
-  top.expr4_c = callAsApps(expr45_c(var_c(terminal(Name_t, f, top.location),
-                                          location=top.location),
-                                    location=top.location),
-                           xs, top.location);
-  top.expr5_c = case top.expr4_c of
-  | expr45_c(e) -> e
-  | _ -> parens_c('(', top.expr1_c, ')', location=top.location)
-  end;
+  top.expr4_c = app_c(f.expr4_c, x.expr5_c, location=top.location);
+  top.expr5_c = parens_c('(', top.expr1_c, ')', location=top.location);
 }
 
 aspect production lam
@@ -132,4 +113,14 @@ top::Expr ::= id::Integer
   top.expr4_c = expr45_c(top.expr5_c, location=top.location);
   top.expr5_c = var_c(terminal(Name_t, "?" ++ toString(id), top.location),
                       location=top.location);
+}
+
+aspect production var
+top::Expr ::= s::String
+{
+  top.expr1_c = expr12_c(top.expr2_c, location=top.location);
+  top.expr2_c = expr23_c(top.expr3_c, location=top.location);
+  top.expr3_c = expr34_c(top.expr4_c, location=top.location);
+  top.expr4_c = expr45_c(top.expr5_c, location=top.location);
+  top.expr5_c = var_c(terminal(Name_t, s, top.location), location=top.location);
 }

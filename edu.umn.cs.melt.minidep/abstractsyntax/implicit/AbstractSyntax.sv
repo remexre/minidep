@@ -40,19 +40,26 @@ top::Decl ::= name::String implicits::Implicits ty::Expr body::Expr
   top.sigs = [pair(name, decorate sig(implicits, ty) with { env = top.env; })];
 }
 
-nonterminal Implicits with asList<Pair<String Expr>>, env, errors, location, names;
+nonterminal Implicits with asList<Pair<String Expr>>, env, errors, location, names, sorted;
 synthesized attribute names :: set:Set<String>;
+synthesized attribute sorted :: [Pair<String Expr>];
 
 abstract production implicitsCons
 top::Implicits ::= n::String e::Expr t::Implicits
 {
   top.asList = cons(pair(n, e), t.asList);
   top.errors := e.errors ++ t.errors;
-
-  top.names = set:add([n], t.names);
   top.errors <- if set:contains(n, t.names) then
     [err(top.location, "Duplicate implicit " ++ n)]
   else [];
+  top.names = set:add([n], t.names);
+  top.sorted = case t of
+  | implicitsCons(n2, e2, t2) ->
+      if n < n2
+      then pair(n, e) :: t.sorted
+      else pair(n2, e2) :: implicitsCons(n, e, t2, location=top.location).sorted
+  | implicitsNil() -> [pair(n, e)]
+  end;
 }
 
 abstract production implicitsNil
@@ -61,6 +68,7 @@ top::Implicits ::=
   top.asList = nil();
   top.errors := [];
   top.names = set:empty(compareString);
+  top.sorted = [];
 }
 
 nonterminal Expr with env, errors, location;
