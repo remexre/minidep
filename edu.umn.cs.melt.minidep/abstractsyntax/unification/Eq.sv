@@ -39,6 +39,15 @@ top::Expr ::= id::Integer
   end;
 }
 
+aspect production universe
+top::Expr ::=
+{
+  top.eq = \e::Expr -> case e of
+  | universe() -> true
+  | _ -> false
+  end;
+}
+
 aspect production var
 top::Expr ::= s::String
 {

@@ -146,19 +146,22 @@ top::Expr ::= f::Expr x::Expr
 aspect production lam
 top::Expr ::= name::String body::Expr
 {
+  local argTy :: Maybe<Expr> =
+    case top.inhTy of
+    | just(pi(_, t, _)) -> just(t)
+    | nothing() -> nothing()
+    end;
+
   body.inhTy = case top.inhTy of
-  | just(pi(nothing(), _, t)) -> just(t)
+  | just(pi(_, _, t)) -> just(t)
   | nothing() -> nothing()
   end;
   body.inhTyEnv = let
-    ty :: Maybe<Expr> =
-      case top.inhTy of
-      | just(pi(just(xn), xt, t)) -> error("TODO lam inhTy")
-      | just(pi(nothing(), _, t)) -> just(t)
-      | nothing() -> nothing()
-      end
-  in
-    pair(name, ty) :: top.inhTyEnv
+    envTmp :: [Pair<String Maybe<Expr>>] = pair(name, argTy) :: top.inhTyEnv
+  in case top.inhTy of
+     | just(pi(just(n), t, _)) -> pair(n, just(t)) :: envTmp
+     | _ -> envTmp
+     end
   end;
 
   top.constraints := case top.inhTy of
@@ -176,7 +179,10 @@ top::Expr ::= name::Maybe<String> l::Expr r::Expr
 {
   l.inhTy = nothing();
   r.inhTy = nothing();
-  r.inhTyEnv = error("TODO pi inhTyEnv");
+  r.inhTyEnv = case name of
+  | just(n) -> pair(n, just(l)) :: top.inhTyEnv
+  | nothing() -> top.inhTyEnv
+  end;
 
   top.constraints := case top.inhTy of
   | just(ty) -> [constraintEq(top.synTy, ty)]
@@ -204,6 +210,19 @@ top::Expr ::= id::Integer
   | just(ty) -> ty
   | nothing() -> error("Cannot infer type of ?" ++ toString(id))
   end;
+}
+
+aspect production universe
+top::Expr ::=
+{
+  top.constraints := [];
+  top.errors <- case top.inhTy of
+  | just(ty) -> [err(top.location, "TYPE has no type")]
+  | nothing() -> []
+  end;
+  top.hasVars = false;
+  top.substExpr = \s::Subst -> top;
+  top.synTy = error("TYPE has no type");
 }
 
 aspect production var

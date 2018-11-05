@@ -5,7 +5,7 @@ import edu:umn:cs:melt:minidep:abstractsyntax:implicit;
 import edu:umn:cs:melt:minidep:abstractsyntax:implicit as implicit;
 import edu:umn:cs:melt:minidep:abstractsyntax:unification as unification;
 import edu:umn:cs:melt:minidep:abstractsyntax:unification only constraints, hasVars, unified;
-import edu:umn:cs:melt:minidep:concretesyntax only Root_c, ast;
+import edu:umn:cs:melt:minidep:concretesyntax only Root_c, Sig_c, ast;
 import edu:umn:cs:melt:minidep:util;
 import silver:langutil;
 import silver:langutil:pp;
@@ -15,44 +15,34 @@ parser parse::Root_c
   edu:umn:cs:melt:minidep:concretesyntax;
 }
 
+parser parseSig::Sig_c
+{
+  edu:umn:cs:melt:minidep:concretesyntax;
+}
+
 function main
 IOVal<Integer> ::= args::[String] ioIn::IO
 {
-  local defaultEnv :: [Pair<String implicit:Signature>] =
-    [ pair("Nat", sig(implicitsNil(location=builtin()),
-        var("TYPE", implicitsNil(location=builtin()), location=builtin())))
-    , pair("zero", sig(implicitsNil(location=builtin()),
-        var("Nat",  implicitsNil(location=builtin()),location=builtin())))
-    , pair("succ", sig(implicitsNil(location=builtin()),
-        pi(nothing(), var("Nat", implicitsNil(location=builtin()), location=builtin()),
-                      var("Nat", implicitsNil(location=builtin()), location=builtin()),
-                      location=builtin())))
-    , pair("List", sig(implicitsNil(location=builtin()),
-        pi(nothing(), var("TYPE", implicitsNil(location=builtin()), location=builtin()),
-                      var("TYPE", implicitsNil(location=builtin()), location=builtin()),
-                      location=builtin())))
-    , pair("nil", sig(implicitsCons("T", var("TYPE", implicitsNil(location=builtin()), location=builtin()),
-                      implicitsNil(location=builtin()), location=builtin()),
-        app(var("List", implicitsNil(location=builtin()), location=builtin()),
-            var("T", implicitsNil(location=builtin()), location=builtin()),
-            location=builtin())))
-    , pair("cons", sig(implicitsCons("T", var("TYPE", implicitsNil(location=builtin()), location=builtin()),
-                       implicitsNil(location=builtin()), location=builtin()),
-        pi(nothing(), var("T", implicitsNil(location=builtin()), location=builtin()),
-                      pi(nothing(), app(var("List", implicitsNil(location=builtin()), location=builtin()),
-                                        var("T", implicitsNil(location=builtin()), location=builtin()),
-                                        location=builtin()),
-                                    app(var("List", implicitsNil(location=builtin()), location=builtin()),
-                                        var("T", implicitsNil(location=builtin()), location=builtin()),
-                                        location=builtin()),
-                                    location=builtin()),
-                      location=builtin())))
+  local defaultEnv :: [Pair<String String>] =
+    [ pair("Nat",  "TYPE")
+    , pair("zero", "Nat")
+    , pair("succ", "Nat -> Nat")
+    , pair("(+)", "Nat -> Nat -> Nat")
+    , pair("(*)", "Nat -> Nat -> Nat")
+    , pair("List", "TYPE -> TYPE")
+    , pair("nil",  "{T: TYPE} List T")
+    , pair("cons", "{T: TYPE} T -> List T -> List T")
     ];
   local implicitDefaultEnv :: [Pair<String Maybe<Decorated implicit:Signature>>] = foldl(
-    \l::[Pair<String Maybe<Decorated implicit:Signature>>] p::Pair<String Signature> ->
-      pair(p.fst, just(decorate p.snd with {
-        env = l;
-      })) :: l,
+    \l::[Pair<String Maybe<Decorated implicit:Signature>>] p::Pair<String String> ->
+      let
+        name :: String = p.fst,
+        sig :: Decorated Signature = decorate parseSig(p.snd, "").parseTree.ast with {
+          env = l;
+        }
+      in
+        pair(name, just(sig)) :: l
+      end,
     [], defaultEnv);
   local spinedDefaultEnv :: [Pair<String Maybe<unification:Expr>>] = map(
     \p::Pair<String Maybe<Decorated implicit:Signature>> ->

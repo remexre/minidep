@@ -105,6 +105,16 @@ top::Expr ::= name::Maybe<String> l::Expr r::Expr
   top.expr5_c = parens_c('(', top.expr1_c, ')', location=top.location);
 }
 
+aspect production universe
+top::Expr ::=
+{
+  top.expr1_c = expr12_c(top.expr2_c, location=top.location);
+  top.expr2_c = expr23_c(top.expr3_c, location=top.location);
+  top.expr3_c = expr34_c(top.expr4_c, location=top.location);
+  top.expr4_c = expr45_c(top.expr5_c, location=top.location);
+  top.expr5_c = type_c('TYPE', location=top.location);
+}
+
 aspect production var
 top::Expr ::= name::String implicits::Implicits
 {

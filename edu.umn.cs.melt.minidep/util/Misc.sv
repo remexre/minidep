@@ -2,6 +2,7 @@ grammar edu:umn:cs:melt:minidep:util;
 
 import silver:langutil;
 import silver:langutil:pp;
+import silver:util:raw:treeset as set;
 
 synthesized attribute asList<a> :: [a];
 
@@ -27,4 +28,10 @@ function nestErrors
     []
   else
     [nested(loc, show(80, cat(text("In expression "), doc)), msgs)];
+}
+
+function set1
+set:Set<String> ::= a::String
+{
+  return set:add([a], set:empty(compareString));
 }

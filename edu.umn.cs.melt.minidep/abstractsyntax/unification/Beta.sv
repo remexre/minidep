@@ -34,6 +34,12 @@ top::Expr ::= id::Integer
   top.beta = \n::String e::Expr -> top;
 }
 
+aspect production universe
+top::Expr ::=
+{
+  top.beta = \n::String e::Expr -> top;
+}
+
 aspect production var
 top::Expr ::= s::String
 {

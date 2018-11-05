@@ -25,16 +25,7 @@ synthesized attribute elaboratedExpr :: unification:Expr occurs on Expr, Signatu
 aspect production sig
 top::Signature ::= implicits::Implicits ty::Expr
 {
-  top.elaboratedExpr = foldr(
-    \h::Pair<String Expr> t::unification:Expr ->
-      unification:pi(
-        just(h.fst),
-        decorate h.snd with {
-          env = top.env;
-        }.elaboratedExpr,
-        t,
-        location=t.location),
-    ty.elaboratedExpr, implicits.sorted);
+  top.elaboratedExpr = implicits.appTo(top.env, ty.elaboratedExpr);
 }
 
 synthesized attribute elaboratedDecl :: unification:Decl occurs on Decl;
@@ -42,11 +33,33 @@ synthesized attribute elaboratedDecl :: unification:Decl occurs on Decl;
 aspect production decl
 top::Decl ::= name::String implicits::Implicits ty::Expr body::Expr
 {
-  local s :: Decorated Signature = decorate sig(implicits, ty) with {
-    env = top.env;
-  };
-  top.elaboratedDecl = unification:decl(name, s.elaboratedExpr,
+  top.elaboratedDecl = unification:decl(name, implicits.appTo(top.env, ty.elaboratedExpr),
     body.elaboratedExpr, location=top.location);
+}
+
+synthesized attribute appTo :: (unification:Expr ::= [Pair<String Maybe<Decorated Signature>>] unification:Expr) occurs on Implicits;
+synthesized attribute find :: (Maybe<Expr> ::= String) occurs on Implicits;
+
+aspect default production
+top::Implicits ::=
+{
+  top.appTo = \env::[Pair<String Maybe<Decorated Signature>>] ex::unification:Expr -> foldr(
+    \h::Pair<String Expr> t::unification:Expr ->
+      unification:pi(just(h.fst), (decorate h.snd with { env = env; }).elaboratedExpr, t,
+                     location=top.location),
+    ex, top.sorted);
+}
+
+aspect production implicitsCons
+top::Implicits ::= n::String e::Expr t::Implicits
+{
+  top.find = \s::String -> if n == s then just(e) else t.find(s);
+}
+
+aspect production implicitsNil
+top::Implicits ::=
+{
+  top.find = \s::String -> nothing();
 }
 
 aspect production app
@@ -58,7 +71,7 @@ top::Expr ::= f::Expr x::Expr
 aspect production lam
 top::Expr ::= name::String body::Expr
 {
-  body.env = cons(pair(name, nothing()), top.env);
+  body.env = pair(name, nothing()) :: top.env;
 
   top.elaboratedExpr = unification:lam(name, body.elaboratedExpr, location=top.location);
 }
@@ -67,22 +80,28 @@ aspect production pi
 top::Expr ::= name::Maybe<String> l::Expr r::Expr
 {
   r.env = case name of
-  | just(n) -> cons(pair(n, nothing()), top.env)
+  | just(n) -> pair(n, nothing()) :: top.env
   | nothing() -> top.env
   end;
 
   top.elaboratedExpr = unification:pi(name, l.elaboratedExpr, r.elaboratedExpr, location=top.location);
 }
 
+aspect production universe
+top::Expr ::=
+{
+  top.elaboratedExpr = unification:universe(location=top.location);
+}
+
 aspect production var
 top::Expr ::= name::String implicits::Implicits
 {
-  local wanted :: set:Set<String> = case lookupTyEnv(name, top.env) of
+  local wanted :: [String] = case lookupTyEnv(name, top.env) of
   | just(sig(implicits, _)) -> implicits.names
-  | _ -> set:empty(compareString)
+  | _ -> []
   end;
 
-  top.errors <- case set:toList(set:difference(implicits.names, wanted)) of
+  top.errors <- case set:toList(set:difference(implicits.nameSet, set:add(wanted, set:empty(compareString)))) of
   | [] -> []
   | [n] -> [err(implicits.location, "Extra implicit: " ++ n)]
   | ns -> [err(implicits.location, "Extra implicits: " ++ implode(", ", ns))]
@@ -90,8 +109,14 @@ top::Expr ::= name::String implicits::Implicits
 
   top.elaboratedExpr = foldr(
     \n::String f::unification:Expr ->
-      unification:app(f, unification:unificationVar(genInt(), location=top.location),
-                      location=top.location),
+      let
+        arg :: unification:Expr = case implicits.find(n) of
+                                  | just(e) -> (decorate e with { env = top.env; }).elaboratedExpr
+                                  | nothing() -> unification:unificationVar(genInt(), location=top.location)
+                                  end
+      in
+        unification:app(f, arg, location=top.location)
+      end,
     unification:var(name, location=top.location),
-    sortBy(stringLte, set:toList(set:difference(wanted, implicits.names))));
+    sortBy(stringLte, wanted));
 }

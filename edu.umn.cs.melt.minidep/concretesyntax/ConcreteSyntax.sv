@@ -19,6 +19,17 @@ top::Root_c ::= decls::Decls_c
   top.pp = decls.pp;
 }
 
+-- The signature nonterminal and production.
+
+nonterminal Sig_c with ast<Signature>, location, pp;
+
+concrete production sig_c
+top::Sig_c ::= imps::ImplicitTys_c ty::Expr1_c
+{
+  top.ast = sig(imps.ast, ty.ast);
+  top.pp = cat(imps.pp, ty.pp);
+}
+
 -- The declaration, claim, and definition nonterminals and productions.
 
 nonterminal Decls_c with ast<Decls>, errors, location, pp;
@@ -226,6 +237,13 @@ top::Expr5_c ::= e::Nat_t
 {
   top.ast = expandNat(toInt(e.lexeme), top.location);
   top.pp = text(e.lexeme);
+}
+
+concrete production type_c
+top::Expr5_c ::= 'TYPE'
+{
+  top.ast = universe(location=top.location);
+  top.pp = text("TYPE");
 }
 
 concrete production expr12_c
