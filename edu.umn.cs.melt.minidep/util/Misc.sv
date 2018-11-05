@@ -1,21 +1,30 @@
 grammar edu:umn:cs:melt:minidep:util;
 
+import silver:langutil;
+import silver:langutil:pp;
+
 synthesized attribute asList<a> :: [a];
 
-function isJust
-Boolean ::= a::Maybe<a>
+function lookupTyEnv
+Maybe<a> ::= name::String env::[Pair<String Maybe<a>>]
 {
-  return case a of
-  | just(_) -> true
-  | nothing() -> false
+  return case lookupBy(stringEq, name, env) of
+  | just(just(x)) -> just(x)
+  | _ -> nothing()
   end;
 }
 
-function isNothing
-Boolean ::= a::Maybe<a>
+function mapSndJust
+[Pair<a Maybe<b>>] ::= l::[Pair<a b>]
 {
-  return case a of
-  | just(_) -> false
-  | nothing() -> true
-  end;
+  return map(\p::Pair<a b> -> pair(p.fst, just(p.snd)), l);
+}
+
+function nestErrors
+[Message] ::= loc::Location doc::Document msgs::[Message]
+{
+  return if null(msgs) then
+    []
+  else
+    [nested(loc, show(80, cat(text("In expression "), doc)), msgs)];
 }

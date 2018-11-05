@@ -1,8 +1,10 @@
 grammar edu:umn:cs:melt:minidep:abstractsyntax:spined;
 
+import edu:umn:cs:melt:minidep:util;
 import silver:langutil;
+import silver:langutil:pp;
 
-nonterminal Decls with constraints, errors, pp;
+nonterminal Decls with errors, pp;
 
 abstract production declsCons
 top::Decls ::= h::Decl t::Decls
@@ -16,7 +18,7 @@ top::Decls ::=
   top.errors := [];
 }
 
-nonterminal Decl with constraints, errors, location;
+nonterminal Decl with errors, location;
 
 abstract production decl
 top::Decl ::= name::String implicits::Implicits ty::Expr body::Expr
@@ -24,12 +26,13 @@ top::Decl ::= name::String implicits::Implicits ty::Expr body::Expr
   top.errors := ty.errors ++ body.errors;
   top.errors <- flatMap(
     \p::Pair<String Expr> -> (decorate p.snd with {
+      inhTy = just(ty);
       inhTyEnv = top.inhTyEnv;
     }).errors,
     implicits.asList);
 }
 
-nonterminal Implicits with asList<Pair<String Expr>>, constraints, errors, implicitNames, location,
+nonterminal Implicits with asList<Pair<String Expr>>, errors, implicitNames, location,
                            sorted;
 synthesized attribute asList<a> :: [a];
 synthesized attribute implicitNames :: [String];
@@ -64,7 +67,7 @@ top::Implicits ::=
   top.sorted = exprsNil(location=top.location);
 }
 
-nonterminal Exprs with append, asList<Expr>, constraints, errors, location;
+nonterminal Exprs with append, asList<Expr>, errors, location;
 synthesized attribute append :: (Exprs ::= Expr);
 
 abstract production exprsCons
@@ -83,24 +86,24 @@ top::Exprs ::=
   top.errors := [];
 }
 
-nonterminal Expr with constraints, errors, location;
+nonterminal Expr with errors, location;
 
 abstract production call
 top::Expr ::= f::String xs::Exprs
 {
-  top.errors := xs.errors;
+  top.errors := nestErrors(top.location, top.pp, xs.errors);
 }
 
 abstract production lam
 top::Expr ::= name::String body::Expr
 {
-  top.errors := body.errors;
+  top.errors := nestErrors(top.location, top.pp, body.errors);
 }
 
 abstract production pi
 top::Expr ::= name::Maybe<String> l::Expr r::Expr
 {
-  top.errors := l.errors ++ r.errors;
+  top.errors := nestErrors(top.location, top.pp, l.errors ++ r.errors);
 }
 
 abstract production unificationVar

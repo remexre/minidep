@@ -62,6 +62,13 @@ synthesized attribute expr2_c :: Expr2_c occurs on Expr;
 synthesized attribute expr3_c :: Expr3_c occurs on Expr;
 synthesized attribute expr4_c :: Expr4_c occurs on Expr;
 synthesized attribute expr5_c :: Expr5_c occurs on Expr;
+attribute pp occurs on Expr;
+
+aspect default production
+top::Expr ::=
+{
+  top.pp = parens(top.expr1_c.pp);
+}
 
 aspect production app
 top::Expr ::= l::Expr r::Expr

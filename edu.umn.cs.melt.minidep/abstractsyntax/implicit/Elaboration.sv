@@ -11,10 +11,6 @@ synthesized attribute elaboratedDecls :: spined:Decls occurs on Decls;
 aspect production declsCons
 top::Decls ::= h::Decl t::Decls
 {
-  t.env = map(
-    \p::Pair<String Signature> -> pair(p.fst, just(p.snd)),
-    reverse(h.sigs)) ++ top.env;
-
   top.elaboratedDecls = spined:declsCons(h.elaboratedDecl, t.elaboratedDecls);
 }
 
@@ -29,7 +25,14 @@ synthesized attribute elaboratedExpr :: spined:Expr occurs on Expr, Signature;
 aspect production sig
 top::Signature ::= implicits::Implicits ty::Expr
 {
-  top.elaboratedExpr = error("TODO");
+  top.elaboratedExpr = foldr(
+    \p::Pair<String Expr> t::spined:Expr ->
+      spined:pi(just(p.fst), p.snd.elaboratedExpr, t, location=ty.location),
+    ty.elaboratedExpr,
+    sortBy(
+      \l::Pair<String Expr> r::Pair<String Expr> -> stringLte(l.fst, r.fst),
+      implicits.asList
+    ));
 }
 
 synthesized attribute elaboratedDecl :: spined:Decl occurs on Decl;
@@ -88,8 +91,8 @@ top::Expr ::= name::Maybe<String> l::Expr r::Expr
 aspect production var
 top::Expr ::= name::String implicits::Implicits
 {
-  local wanted :: set:Set<String> = case lookupBy(stringEq, name, top.env) of
-  | just(just(sig(implicits, _))) -> implicits.names
+  local wanted :: set:Set<String> = case lookupTyEnv(name, top.env) of
+  | just(sig(implicits, _)) -> implicits.names
   | _ -> set:empty(compareString)
   end;
 

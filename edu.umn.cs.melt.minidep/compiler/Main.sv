@@ -18,8 +18,7 @@ parser parse::Root_c
 function main
 IOVal<Integer> ::= args::[String] ioIn::IO
 {
-  local defaultEnv :: [Pair<String Maybe<implicit:Signature>>] = map(
-    \p::Pair<String Signature> -> pair(p.fst, just(p.snd)),
+  local defaultEnv :: [Pair<String implicit:Signature>] =
     [ pair("Nat", sig(implicitsNil(location=builtin()),
         var("TYPE", implicitsNil(location=builtin()), location=builtin())))
     , pair("zero", sig(implicitsNil(location=builtin()),
@@ -48,13 +47,20 @@ IOVal<Integer> ::= args::[String] ioIn::IO
                                         location=builtin()),
                                     location=builtin()),
                       location=builtin())))
-    ]);
-  local spinedDefaultEnv :: [Pair<String spined:Expr>] = flatMap(
-    \p::Pair<String Maybe<implicit:Signature>> -> case p.snd of
-                                                  | just(s) -> [pair(p.fst, s.elaboratedExpr)]
-                                                  | nothing() -> []
-                                                  end,
-    defaultEnv);
+    ];
+  local implicitDefaultEnv :: [Pair<String Maybe<Decorated implicit:Signature>>] = foldl(
+    \l::[Pair<String Maybe<Decorated implicit:Signature>>] p::Pair<String Signature> ->
+      pair(p.fst, just(decorate p.snd with {
+        env = l;
+      })) :: l,
+    [], defaultEnv);
+  local spinedDefaultEnv :: [Pair<String Maybe<spined:Expr>>] = map(
+    \p::Pair<String Maybe<Decorated implicit:Signature>> ->
+      case p.snd of
+      | just(s) -> pair(p.fst, just(s.elaboratedExpr))
+      | nothing() -> pair(p.fst, nothing())
+      end,
+    implicitDefaultEnv);
 
   return evalIO(do (bindIO, returnIO) {
     if null(args) then {
@@ -75,7 +81,7 @@ IOVal<Integer> ::= args::[String] ioIn::IO
         } else {
           printM("cst pp:\n" ++ show(80, cst.pp));
           astPreElaboration :: Decorated implicit:Decls = decorate cst.ast with {
-            env = defaultEnv;
+            env = implicitDefaultEnv;
           };
           if !null(astPreElaboration.errors) then {
             printM(messagesToString(astPreElaboration.errors) ++ "\n");
@@ -86,13 +92,14 @@ IOVal<Integer> ::= args::[String] ioIn::IO
               decorate astPreElaboration.elaboratedDecls with {
                 spined:inhTyEnv = spinedDefaultEnv;
               };
+            printM("ast pp (pre-unification):\n" ++ show(80, astPreUnification.pp));
             if !null(astPreUnification.errors) then {
               printM(messagesToString(astPreUnification.errors) ++ "\n");
               return 1;
             } else {
-              printM("ast pp (pre-unification):\n" ++ show(80, astPreUnification.pp));
-              printM("ast constraints:\n" ++ show(80, ppImplode(line(),
-                map((.pp), astPreUnification.constraints))));
+              printM("ast constraints:\n" ++ show(80, ppConcat(map(
+                \c::spined:Constraint -> cat(c.pp, line()),
+                astPreUnification.constraints))));
               astPostUnification :: Decorated spined:Decls =
                 decorate astPreUnification.unified with {
                   spined:inhTyEnv = spinedDefaultEnv;

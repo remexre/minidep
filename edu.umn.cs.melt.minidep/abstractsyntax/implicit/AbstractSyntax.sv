@@ -4,7 +4,7 @@ import edu:umn:cs:melt:minidep:util;
 import silver:langutil;
 import silver:util:raw:treeset as set;
 
-autocopy attribute env :: [Pair<String Maybe<Signature>>];
+autocopy attribute env :: [Pair<String Maybe<Decorated Signature>>];
 
 nonterminal Decls with asList<Decl>, env, errors, pp;
 
@@ -12,6 +12,8 @@ abstract production declsCons
 top::Decls ::= h::Decl t::Decls
 {
   top.asList = cons(h, t.asList);
+  t.env = mapSndJust(reverse(h.sigs)) ++ top.env;
+
   top.errors := h.errors ++ t.errors;
 }
 
@@ -29,16 +31,16 @@ top::Signature ::= implicits::Implicits ty::Expr
 {}
 
 nonterminal Decl with env, errors, location, sigs;
-synthesized attribute sigs :: [Pair<String Signature>];
+synthesized attribute sigs :: [Pair<String Decorated Signature>];
 
 abstract production decl
 top::Decl ::= name::String implicits::Implicits ty::Expr body::Expr
 {
   top.errors := implicits.errors ++ ty.errors ++ body.errors;
-  top.sigs = [pair(name, sig(implicits, ty))];
+  top.sigs = [pair(name, decorate sig(implicits, ty) with { env = top.env; })];
 }
 
-nonterminal Implicits with asList<Pair<String Decorated Expr>>, env, errors, location, names;
+nonterminal Implicits with asList<Pair<String Expr>>, env, errors, location, names;
 synthesized attribute names :: set:Set<String>;
 
 abstract production implicitsCons
