@@ -52,7 +52,7 @@ top::Constraint ::= l::Expr r::Expr
 autocopy attribute inhTyEnv :: [Pair<String Maybe<Expr>>] occurs on Decl, Decls, Expr;
 synthesized attribute constraints :: [Constraint] with ++;
 attribute constraints occurs on Decl, Decls, Expr;
-synthesized attribute hasVars :: Boolean occurs on Decl, Decls, Expr;
+synthesized attribute unificationVars :: [Pair<Integer Location>] occurs on Decl, Decls, Expr;
 
 synthesized attribute substDecls :: (Decls ::= Subst) occurs on Decls;
 synthesized attribute substsDecls :: (Decls ::= [Subst]) occurs on Decls;
@@ -88,7 +88,7 @@ top::Decls ::= h::Decl t::Decls
   t.inhTyEnv = h.sigs ++ top.inhTyEnv;
 
   top.constraints := h.constraints ++ t.constraints;
-  top.hasVars = h.hasVars || t.hasVars;
+  top.unificationVars = h.unificationVars ++ t.unificationVars;
   top.substDecls = \s::Subst -> declsCons(h.substDecl(s), t.substDecls(s));
 
   local soln :: Either<[Message] [Subst]> = solveAll(top.constraints, []);
@@ -100,7 +100,7 @@ aspect production declsNil
 top::Decls ::=
 {
   top.constraints := [];
-  top.hasVars = false;
+  top.unificationVars = [];
   top.substDecls = \s::Subst -> declsNil();
   top.unified = top;
 }
@@ -114,7 +114,7 @@ top::Decl ::= name::String ty::Expr
   ty.inhTy = nothing();
 
   top.constraints := ty.constraints;
-  top.hasVars = ty.hasVars;
+  top.unificationVars = ty.unificationVars;
   top.sigs = [pair(name, just(ty))];
   top.substDecl = \s::Subst -> declDecl(name, ty.substExpr(s), location=top.location);
 }
@@ -127,7 +127,7 @@ top::Decl ::= name::String ty::Expr body::Expr
   -- TODO: Include pi type variables from ty in body.inhTyEnv?
 
   top.constraints := ty.constraints ++ body.constraints;
-  top.hasVars = ty.hasVars || body.hasVars;
+  top.unificationVars = ty.unificationVars ++ body.unificationVars;
   top.sigs = [pair(name, just(ty))];
   top.substDecl = \s::Subst ->
     declDef(name, ty.substExpr(s), body.substExpr(s), location=top.location);
@@ -166,7 +166,7 @@ top::Expr ::= f::Expr x::Expr
   | nothing() -> []
   end;
   top.constraints <- f.constraints ++ x.constraints;
-  top.hasVars = f.hasVars || x.hasVars;
+  top.unificationVars = f.unificationVars ++ x.unificationVars;
   top.substExpr = \s::Subst -> app(f.substExpr(s), x.substExpr(s), location=top.location);
   top.synTy = case f.synTy of
   | pi(just(n), _, r) -> r.beta(n, x)
@@ -202,7 +202,7 @@ top::Expr ::= name::String body::Expr
   end;
 
   top.constraints <- body.constraints;
-  top.hasVars = body.hasVars;
+  top.unificationVars = body.unificationVars;
   top.substExpr = \s::Subst -> lam(name, body.substExpr(s), location=top.location);
 }
 
@@ -222,7 +222,7 @@ top::Expr ::= name::Maybe<String> l::Expr r::Expr
   end;
 
   top.constraints <- l.constraints ++ r.constraints;
-  top.hasVars = l.hasVars || r.hasVars;
+  top.unificationVars = l.unificationVars ++ r.unificationVars;
   top.substExpr = \s::Subst -> pi(name, l.substExpr(s), r.substExpr(s), location=top.location);
 }
 
@@ -234,7 +234,7 @@ top::Expr ::= id::Integer
   | just(ty) -> []
   | nothing() -> [err(top.location, "Cannot infer type of ?" ++ toString(id))]
   end;
-  top.hasVars = true;
+  top.unificationVars = [pair(id, top.location)];
   top.substExpr = \s::Subst -> case s of 
     | substVar(id2, e) -> if id == id2 then e else top
     end;
@@ -252,7 +252,7 @@ top::Expr ::=
   | just(ty) -> [err(top.location, "TYPE has no type")]
   | nothing() -> []
   end;
-  top.hasVars = false;
+  top.unificationVars = [];
   top.substExpr = \s::Subst -> top;
   top.synTy = error("TYPE has no type");
 }
@@ -269,7 +269,7 @@ top::Expr ::= s::String
   | just(nothing()) -> [err(top.location, "Cannot infer type of bound variable " ++ s)]
   | nothing() -> [err(top.location, "Cannot infer type of free variable " ++ s)]
   end;
-  top.hasVars = false;
+  top.unificationVars = [];
   top.substExpr = \s::Subst -> top;
   top.synTy = case lookupBy(stringEq, s, top.inhTyEnv) of
   | just(just(t)) -> t
