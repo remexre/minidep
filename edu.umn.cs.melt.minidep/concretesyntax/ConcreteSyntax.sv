@@ -39,22 +39,37 @@ nonterminal Decls_c with ast<Decls>, errors, location, pp;
 concrete production declsConsClaim_c
 top::Decls_c ::= name::Name_t ':' imps::ImplicitTys_c ty::Expr1_c ';' tl::Decls_c
 {
-  local tmpErr :: Pair<Decls [Message]> = pair(
-    error("A claim must precede a definition of the same binding"),
-    [err(top.location, "A claim must precede a definition of the same binding")]);
-  local tmp :: Pair<Decls [Message]> = case tl of
+  top.ast = case tl of
   | declsConsDef_c(n, _, expr, _, tl2) ->
-      if n.lexeme == name.lexeme
-      then pair(
-        declsCons(decl(name.lexeme, imps.ast, ty.ast, expr.ast, location=top.location),
-                  tl2.ast),
-        [])
-      else tmpErr
-  | _ -> tmpErr
+      if n.lexeme == name.lexeme then
+        declsCons(declDef(name.lexeme, imps.ast, ty.ast, expr.ast, location=top.location),
+                  tl2.ast)
+      else
+        declsCons(declDecl(name.lexeme, imps.ast, ty.ast, location=top.location), tl.ast)
+  | _ -> declsCons(declDecl(name.lexeme, imps.ast, ty.ast, location=top.location), tl.ast)
+  end;
+  top.errors := case tl of
+  | declsConsDef_c(n, _, expr, _, tl2) -> if n.lexeme == name.lexeme then tl2.errors else tl.errors
+  | _ -> tl.errors
   end;
 
+  {-
+  local tmp :: Pair<Decls Decls_c> = case tl of
+  | declsConsDef_c(n, _, expr, _, tl2) ->
+      if n.lexeme == name.lexeme then
+        pair(declsCons(declDef(name.lexeme, imps.ast, ty.ast, expr.ast, location=top.location),
+                       tl2.ast),
+             tl2)
+      else
+        pair(declsCons(declDecl(name.lexeme, imps.ast, ty.ast, location=top.location), tl.ast),
+             tl)
+  | _ -> pair(declsCons(declDecl(name.lexeme, imps.ast, ty.ast, location=top.location), tl.ast),
+              tl)
+  end;
   top.ast = tmp.fst;
-  top.errors := tmp.snd;
+  top.errors := tmp.snd.errors;
+  -}
+
   top.pp = ppConcat(
     [ text(name.lexeme)
     , text(" : ")
@@ -69,9 +84,10 @@ top::Decls_c ::= name::Name_t ':' imps::ImplicitTys_c ty::Expr1_c ';' tl::Decls_
 concrete production declsConsDef_c
 top::Decls_c ::= name::Name_t '=' expr::Expr1_c ';' tl::Decls_c
 {
-  top.ast = error("Definition without a corresponding claim?");
+  local errMsg :: String = "Definition of " ++ name.lexeme ++ " without a corresponding claim?";
+  top.ast = error(errMsg);
   top.errors := tl.errors;
-  top.errors <- [err(top.location, "Definition without a corresponding claim?")];
+  top.errors <- [err(top.location, errMsg)];
   top.pp = ppConcat(
     [ text(name.lexeme)
     , text(" = ")
@@ -99,12 +115,12 @@ nonterminal Expr4_c with ast<Expr>, location, pp;
 nonterminal Expr5_c with ast<Expr>, location, pp;
 
 concrete production lam_c
-top::Expr1_c ::= '\' arg::Name_t '->' body::Expr1_c
+top::Expr1_c ::= '\' args::Args_c '->' body::Expr1_c
 {
-  top.ast = lam(arg.lexeme, body.ast, location=top.location);
+  top.ast = args.expand(body.ast, top.location);
   top.pp = ppConcat(
     [ text("\\")
-    , text(arg.lexeme)
+    , args.pp
     , text(" -> ")
     , body.pp
     ]);
@@ -134,7 +150,7 @@ top::Expr1_c ::= '(' arg::Name_t ':' ty::Expr2_c ')' '->' body::Expr1_c
 concrete production add_c
 top::Expr2_c ::= l::Expr2_c '+' r::Expr3_c
 {
-  top.ast = app(app(var("(+)", implicitsNil(location=top.location),
+  top.ast = app(app(var("plus", implicitsNil(location=top.location),
                         location=top.location),
     l.ast, location=top.location),
     r.ast, location=top.location);
@@ -144,7 +160,7 @@ top::Expr2_c ::= l::Expr2_c '+' r::Expr3_c
 concrete production mul_c
 top::Expr3_c ::= l::Expr3_c '*' r::Expr4_c
 {
-  top.ast = app(app(var("(*)", implicitsNil(location=top.location),
+  top.ast = app(app(var("times", implicitsNil(location=top.location),
                         location=top.location),
     l.ast, location=top.location),
     r.ast, location=top.location);
@@ -156,6 +172,13 @@ top::Expr4_c ::= l::Expr4_c r::Expr5_c
 {
   top.ast = app(l.ast, r.ast, location=top.location);
   top.pp = ppConcat([l.pp, space(), r.pp]);
+}
+
+concrete production anon_c
+top::Expr5_c ::= '_'
+{
+  top.ast = anon(location=top.location);
+  top.pp = text("_");
 }
 
 function expandList
@@ -237,25 +260,29 @@ top::Expr5_c ::= 'TYPE'
 }
 
 concrete production expr12_c
-top::Expr1_c ::= e::Expr2_c {
+top::Expr1_c ::= e::Expr2_c
+{
   top.ast = e.ast;
   top.pp = e.pp;
 }
 
 concrete production expr23_c
-top::Expr2_c ::= e::Expr3_c {
+top::Expr2_c ::= e::Expr3_c
+{
   top.ast = e.ast;
   top.pp = e.pp;
 }
 
 concrete production expr34_c
-top::Expr3_c ::= e::Expr4_c {
+top::Expr3_c ::= e::Expr4_c
+{
   top.ast = e.ast;
   top.pp = e.pp;
 }
 
 concrete production expr45_c
-top::Expr4_c ::= e::Expr5_c {
+top::Expr4_c ::= e::Expr5_c
+{
   top.ast = e.ast;
   top.pp = e.pp;
 }
@@ -359,4 +386,35 @@ top::ImplicitVals_c ::=
 {
   top.ast = implicitsNil(location=top.location);
   top.implicitValCsts = [];
+}
+
+nonterminal Args_c with expand, pp;
+synthesized attribute expand :: (Expr ::= Expr Location);
+
+concrete production argsConsAnon_c
+top::Args_c ::= '_' t::Args_c
+{
+  top.expand = \e::Expr l::Location -> lam(genSym(), t.expand(e, l), location=l);
+  top.pp = cat(text("_"), cat(space(), t.pp));
+}
+
+concrete production argsConsArg_c
+top::Args_c ::= h::Name_t t::Args_c
+{
+  top.expand = \e::Expr l::Location -> lam(h.lexeme, t.expand(e, l), location=l);
+  top.pp = cat(text(h.lexeme), cat(space(), t.pp));
+}
+
+concrete production argsNilAnon_c
+top::Args_c ::= '_'
+{
+  top.expand = \e::Expr l::Location -> lam(genSym(), e, location=l);
+  top.pp = text("_");
+}
+
+concrete production argsNilArg_c
+top::Args_c ::= a::Name_t
+{
+  top.expand = \e::Expr l::Location -> lam(a.lexeme, e, location=l);
+  top.pp = text(a.lexeme);
 }

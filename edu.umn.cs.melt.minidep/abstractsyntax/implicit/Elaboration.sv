@@ -30,11 +30,18 @@ top::Signature ::= implicits::Implicits ty::Expr
 
 synthesized attribute elaboratedDecl :: unification:Decl occurs on Decl;
 
-aspect production decl
+aspect production declDecl
+top::Decl ::= name::String implicits::Implicits ty::Expr
+{
+  top.elaboratedDecl = unification:declDecl(name, implicits.appTo(top.env, ty.elaboratedExpr),
+                                            location=top.location);
+}
+
+aspect production declDef
 top::Decl ::= name::String implicits::Implicits ty::Expr body::Expr
 {
-  top.elaboratedDecl = unification:decl(name, implicits.appTo(top.env, ty.elaboratedExpr),
-    body.elaboratedExpr, location=top.location);
+  top.elaboratedDecl = unification:declDef(name, implicits.appTo(top.env, ty.elaboratedExpr),
+                                            body.elaboratedExpr, location=top.location);
 }
 
 synthesized attribute appTo :: (unification:Expr ::= [Pair<String Maybe<Decorated Signature>>] unification:Expr) occurs on Implicits;
@@ -60,6 +67,12 @@ aspect production implicitsNil
 top::Implicits ::=
 {
   top.find = \s::String -> nothing();
+}
+
+aspect production anon
+top::Expr ::=
+{
+  top.elaboratedExpr = unification:unificationVar(genInt(), location=top.location);
 }
 
 aspect production app

@@ -1,16 +1,21 @@
-Bool : TYPE
-true : Bool
-false : Bool
+Bool : TYPE;
+true : Bool;
+false : Bool;
 
-Nat : TYPE
-zero : Nat
-succ : Nat -> Nat
-(+) : Nat -> Nat -> Nat
-(*) : Nat -> Nat -> Nat
+Nat : TYPE;
+zero : Nat;
+succ : Nat -> Nat;
+plus : Nat -> Nat -> Nat;
+times : Nat -> Nat -> Nat;
 
-List : TYPE -> TYPE
-nil : {T: TYPE} -> List T
-cons : {T: TYPE} -> T -> List T -> List T
+List : TYPE -> TYPE;
+nil : {T: TYPE} -> List T;
+cons : {T: TYPE} -> T -> List T -> List T;
 
-the : (T: TYPE) -> T -> T
-the _ x = x
+the : (T: TYPE) -> T -> T;
+the = \_ x -> x;
+
+length : {T: TYPE} -> List T -> Nat;
+
+example : Nat;
+example = length (the (List Nat) []);

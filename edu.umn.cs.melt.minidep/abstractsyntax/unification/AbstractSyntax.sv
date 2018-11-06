@@ -21,7 +21,13 @@ top::Decls ::=
 
 nonterminal Decl with errors, location;
 
-abstract production decl
+abstract production declDecl
+top::Decl ::= name::String ty::Expr
+{
+  top.errors := ty.errors;
+}
+
+abstract production declDef
 top::Decl ::= name::String ty::Expr body::Expr
 {
   top.errors := ty.errors ++ body.errors;

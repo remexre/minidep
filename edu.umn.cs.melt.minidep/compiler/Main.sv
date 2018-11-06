@@ -24,6 +24,7 @@ function main
 IOVal<Integer> ::= args::[String] ioIn::IO
 {
   local defaultEnv :: [Pair<String String>] =
+    []; {-
     [ pair("Bool",  "TYPE")
     , pair("true",  "Bool")
     , pair("false", "Bool")
@@ -35,7 +36,7 @@ IOVal<Integer> ::= args::[String] ioIn::IO
     , pair("List",  "TYPE -> TYPE")
     , pair("nil",   "{T: TYPE} -> List T")
     , pair("cons",  "{T: TYPE} -> T -> List T -> List T")
-    ];
+    ]; -}
   local implicitDefaultEnv :: [Pair<String Maybe<Decorated implicit:Signature>>] = foldl(
     \l::[Pair<String Maybe<Decorated implicit:Signature>>] p::Pair<String String> ->
       let

@@ -33,7 +33,16 @@ ImplicitTyList_c ::= l::[Pair<String Expr>] loc::Location
     implicitTysNil_c(location=loc), l);
 }
 
-aspect production decl
+aspect production declDecl
+top::Decl ::= name::String ty::Expr
+{
+  top.decls_c = declsConsClaim_c(terminal(Name_t, name, top.location), ':',
+                                 implicitTysNone_c(location=top.location), ty.expr1_c,
+                                 ';',
+                                 declsNil_c(location=top.location), location=top.location);
+}
+
+aspect production declDef
 top::Decl ::= name::String ty::Expr body::Expr
 {
   local name_t :: Name_t = terminal(Name_t, name, top.location);
@@ -71,7 +80,7 @@ top::Expr ::= f::Expr x::Expr
 aspect production lam
 top::Expr ::= name::String body::Expr
 {
-  top.expr1_c = lam_c('\', terminal(Name_t, name, top.location), '->',
+  top.expr1_c = lam_c('\', argsNilArg_c(terminal(Name_t, name, top.location)), '->',
     body.expr1_c, location=top.location);
   top.expr2_c = expr23_c(top.expr3_c, location=top.location);
   top.expr3_c = expr34_c(top.expr4_c, location=top.location);

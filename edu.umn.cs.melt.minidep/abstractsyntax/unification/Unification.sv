@@ -32,6 +32,9 @@ top::Constraint ::= l::Expr r::Expr
     | unificationVar(l), _ -> right(pair([], just(substVar(l, r))))
     | _, unificationVar(_) -> right(pair([constraintEq(r, l)], nothing()))
     | app(lf, lx), app(rf, rx) -> right(pair([constraintEq(lf, rf), constraintEq(lx, rx)], nothing()))
+    | pi(nothing(), ll, lr), pi(nothing(), rl, rr) -> right(pair([ constraintEq(ll, rl)
+                                                                 , constraintEq(lr, rr)
+                                                                 ], nothing()))
     | universe(), universe() -> right(pair([], nothing()))
     | var(ln), var(rn) -> if ln == rn
                         then right(pair([], nothing()))
@@ -82,6 +85,8 @@ top::Decls ::=
 aspect production declsCons
 top::Decls ::= h::Decl t::Decls
 {
+  t.inhTyEnv = h.sigs ++ top.inhTyEnv;
+
   top.constraints := h.constraints ++ t.constraints;
   top.hasVars = h.hasVars || t.hasVars;
   top.substDecls = \s::Subst -> declsCons(h.substDecl(s), t.substDecls(s));
@@ -100,20 +105,32 @@ top::Decls ::=
   top.unified = top;
 }
 
+synthesized attribute sigs :: [Pair<String Maybe<Expr>>] occurs on Decl;
 synthesized attribute substDecl :: (Decl ::= Subst) occurs on Decl;
 
-aspect production decl
+aspect production declDecl
+top::Decl ::= name::String ty::Expr
+{
+  ty.inhTy = nothing();
+
+  top.constraints := ty.constraints;
+  top.hasVars = ty.hasVars;
+  top.sigs = [pair(name, just(ty))];
+  top.substDecl = \s::Subst -> declDecl(name, ty.substExpr(s), location=top.location);
+}
+
+aspect production declDef
 top::Decl ::= name::String ty::Expr body::Expr
 {
   ty.inhTy = nothing();
   body.inhTy = just(ty);
-  ty.inhTyEnv = top.inhTyEnv;
-  body.inhTyEnv = top.inhTyEnv; -- TODO: Include pi type variables from ty?
+  -- TODO: Include pi type variables from ty in body.inhTyEnv?
 
   top.constraints := ty.constraints ++ body.constraints;
   top.hasVars = ty.hasVars || body.hasVars;
+  top.sigs = [pair(name, just(ty))];
   top.substDecl = \s::Subst ->
-    decl(name, ty.substExpr(s), body.substExpr(s), location=top.location);
+    declDef(name, ty.substExpr(s), body.substExpr(s), location=top.location);
 }
 
 inherited attribute inhTy :: Maybe<Expr> occurs on Expr;
@@ -130,7 +147,6 @@ aspect production app
 top::Expr ::= f::Expr x::Expr
 {
   f.inhTy = nothing();
-  f.inhTyEnv = top.inhTyEnv;
   x.inhTy = case f.synTy of
   | pi(_, t, _) -> just(t)
   | _ -> nothing()
@@ -248,14 +264,16 @@ top::Expr ::= s::String
   | just(ty) -> [constraintEq(top.synTy, ty)]
   | nothing() -> []
   end;
-  top.errors <- case lookupTyEnv(s, top.inhTyEnv) of
-  | just(t) -> []
-  | nothing() -> [err(top.location, "Cannot infer type of " ++ s)]
+  top.errors <- case lookupBy(stringEq, s, top.inhTyEnv) of
+  | just(just(t)) -> []
+  | just(nothing()) -> [err(top.location, "Cannot infer type of bound variable " ++ s)]
+  | nothing() -> [err(top.location, "Cannot infer type of free variable " ++ s)]
   end;
   top.hasVars = false;
   top.substExpr = \s::Subst -> top;
-  top.synTy = case lookupTyEnv(s, top.inhTyEnv) of
-  | just(t) -> t
-  | nothing() -> error("Cannot infer type of " ++ s)
+  top.synTy = case lookupBy(stringEq, s, top.inhTyEnv) of
+  | just(just(t)) -> t
+  | just(nothing()) -> error("Cannot infer type of bound variable " ++ s)
+  | nothing() -> error("Cannot infer type of free variable " ++ s)
   end;
 }

@@ -18,7 +18,15 @@ top::Decls ::=
 
 synthesized attribute decls_c :: Decls_c occurs on Decl;
 
-aspect production decl
+aspect production declDecl
+top::Decl ::= name::String implicits::Implicits ty::Expr
+{
+  top.decls_c = declsConsClaim_c(terminal(Name_t, name, top.location), ':',
+                                 implicits.implicitTys_c, ty.expr1_c, ';',
+                                 declsNil_c(location=top.location), location=top.location);
+}
+
+aspect production declDef
 top::Decl ::= name::String implicits::Implicits ty::Expr body::Expr
 {
   local name_t :: Name_t = terminal(Name_t, name, top.location);
@@ -70,6 +78,16 @@ top::Expr ::=
   top.pp = parens(top.expr1_c.pp);
 }
 
+aspect production anon
+top::Expr ::=
+{
+  top.expr1_c = expr12_c(top.expr2_c, location=top.location);
+  top.expr2_c = expr23_c(top.expr3_c, location=top.location);
+  top.expr3_c = expr34_c(top.expr4_c, location=top.location);
+  top.expr4_c = expr45_c(top.expr5_c, location=top.location);
+  top.expr5_c = anon_c('_', location=top.location);
+}
+
 aspect production app
 top::Expr ::= l::Expr r::Expr
 {
@@ -83,7 +101,7 @@ top::Expr ::= l::Expr r::Expr
 aspect production lam
 top::Expr ::= name::String body::Expr
 {
-  top.expr1_c = lam_c('\', terminal(Name_t, name, top.location), '->',
+  top.expr1_c = lam_c('\', argsNilArg_c(terminal(Name_t, name, top.location)), '->',
     body.expr1_c, location=top.location);
   top.expr2_c = expr23_c(top.expr3_c, location=top.location);
   top.expr3_c = expr34_c(top.expr4_c, location=top.location);

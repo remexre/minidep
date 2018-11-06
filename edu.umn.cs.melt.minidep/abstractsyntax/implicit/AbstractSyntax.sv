@@ -33,7 +33,14 @@ top::Signature ::= implicits::Implicits ty::Expr
 nonterminal Decl with env, errors, location, sigs;
 synthesized attribute sigs :: [Pair<String Decorated Signature>];
 
-abstract production decl
+abstract production declDecl
+top::Decl ::= name::String implicits::Implicits ty::Expr
+{
+  top.errors := implicits.errors ++ ty.errors;
+  top.sigs = [pair(name, decorate sig(implicits, ty) with { env = top.env; })];
+}
+
+abstract production declDef
 top::Decl ::= name::String implicits::Implicits ty::Expr body::Expr
 {
   top.errors := implicits.errors ++ ty.errors ++ body.errors;
@@ -79,6 +86,12 @@ top::Implicits ::=
 }
 
 nonterminal Expr with env, errors, location;
+
+abstract production anon
+top::Expr ::=
+{
+  top.errors := [];
+}
 
 abstract production app
 top::Expr ::= f::Expr x::Expr

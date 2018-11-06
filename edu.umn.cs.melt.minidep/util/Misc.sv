@@ -6,6 +6,12 @@ import silver:util:raw:treeset as set;
 
 synthesized attribute asList<a> :: [a];
 
+function genSym
+String ::=
+{
+  return "gensym#" ++ toString(genInt());
+}
+
 function lookupTyEnv
 Maybe<a> ::= name::String env::[Pair<String Maybe<a>>]
 {

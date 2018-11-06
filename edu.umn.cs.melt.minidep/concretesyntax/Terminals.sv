@@ -33,6 +33,7 @@ terminal Type_t 'TYPE' lexer classes {KEYWORD};
 
 terminal Nat_t  /[0-9]+/ named "a natural number";
 terminal Name_t /[a-zA-Z_][0-9a-zA-Z_]*/ lexer classes {IDENTIFIER}, named "a name";
+-- terminal Sym_t  /[!$%&\*\+\.\/<=>\?@\^\|\-~]/ lexer classes {OPERATOR}, named "an operator";
 
 ignore terminal Whitespace_t  /[\n\r\t\ ]+/ named "whitespace";
 ignore terminal LineComment_t  /[\-][\-][^\n\r]*/ lexer classes {COMMENT}, named "a comment";
