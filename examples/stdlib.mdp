@@ -14,8 +14,3 @@ cons : {T: TYPE} -> T -> List T -> List T;
 
 the : (T: TYPE) -> T -> T;
 the = \_ x -> x;
-
-length : {T: TYPE} -> List T -> Nat;
-
-example : Nat;
-example = length (the (List Nat) []);
