@@ -6,35 +6,44 @@ import silver:langutil;
 import silver:langutil:pp;
 
 nonterminal Subst;
-synthesized attribute substSubst :: (Subst ::= Subst) occurs on Subst;
-synthesized attribute substSubsts :: ([Subst] ::= [Subst]) occurs on Subst;
 
 abstract production substVar
 top::Subst ::= var::Integer expr::Expr
-{
-  top.substSubst = \s::Subst -> substVar(var, expr.substExpr(s));
-  top.substSubsts = map(\s::Subst -> s.substSubst(top), _);
-}
+{}
 
-closed nonterminal Constraint with pp, solve;
-synthesized attribute solve :: Pair<[Constraint] Maybe<Subst>>;
+closed nonterminal Constraint with pp, solve, substConstraint;
+synthesized attribute solve :: Either<[Message] Pair<[Constraint] Maybe<Subst>>>;
+synthesized attribute substConstraint :: (Constraint ::= Subst);
 
 abstract production constraintEq
 top::Constraint ::= l::Expr r::Expr
 {
+  local loc :: Location = if l.location.index == -1 && r.location.index != -1
+                          then r.location
+                          else l.location;
+
   top.pp = ppConcat(
     [ l.expr5_c.pp
     , text(" ~ ")
     , r.expr5_c.pp
     ]);
-  top.solve = if l.eq(r)
-    then pair([], nothing())
-    else case l, r of
-    | unificationVar(l), _ -> pair([], just(substVar(l, r)))
-    | _, unificationVar(_) -> pair([constraintEq(r, l)], nothing())
-    | app(lf, lx), app(rf, rx) -> pair([constraintEq(lf, rf), constraintEq(lx, rx)], nothing())
+  top.solve =
+    case l, r of
+    | unificationVar(l), _ -> right(pair([], just(substVar(l, r))))
+    | _, unificationVar(_) -> right(pair([constraintEq(r, l)], nothing()))
+    | app(lf, lx), app(rf, rx) -> right(pair([constraintEq(lf, rf), constraintEq(lx, rx)], nothing()))
+    | universe(), universe() -> right(pair([], nothing()))
+    | var(ln), var(rn) -> if ln == rn
+                        then right(pair([], nothing()))
+                        else left([err(loc, show(80, ppImplode(space(),
+                                    [ text("Cannot unify")
+                                    , l.expr5_c.pp
+                                    , text("with")
+                                    , r.expr5_c.pp
+                                    ])))])
     | _, _ -> error("TODO Solve " ++ show(80, top.pp))
     end;
+  top.substConstraint = \s::Subst -> constraintEq(l.substExpr(s), r.substExpr(s));
 }
 
 autocopy attribute inhTyEnv :: [Pair<String Maybe<Expr>>] occurs on Decl, Decls, Expr;
@@ -47,14 +56,17 @@ synthesized attribute substsDecls :: (Decls ::= [Subst]) occurs on Decls;
 synthesized attribute unified :: Decls occurs on Decls;
 
 function solveAll
-[Subst] ::= cs::[Constraint] ss::[Subst]
+Either<[Message] [Subst]> ::= cs::[Constraint] ss::[Subst]
 {
   return case cs of
-  | h::t -> case h.solve.snd of
-            | just(s) ->   solveAll(h.solve.fst ++ t, s::ss)
-            | nothing() -> solveAll(h.solve.fst ++ t, ss)
-            end
-  | [] -> ss
+  | h::t ->
+      case h.solve of
+      | left(errs) -> left(errs)
+      | right(pair(newCs, just(s))) -> solveAll(
+            newCs ++ map(\c::Constraint -> c.substConstraint(s), t), s::ss)
+      | right(pair(newCs, nothing())) -> solveAll(newCs ++ t, ss)
+      end
+  | [] -> right(ss)
   end;
 }
 
@@ -62,10 +74,9 @@ aspect default production
 top::Decls ::=
 {
   top.substsDecls = \ss::[Subst] -> case ss of
-  | h::t -> top.substDecls(h).substsDecls(h.substSubsts(t))
+  | h::t -> top.substDecls(h).substsDecls(t)
   | [] -> top
   end;
-  top.unified = top.substsDecls(solveAll(top.constraints, []));
 }
 
 aspect production declsCons
@@ -74,6 +85,10 @@ top::Decls ::= h::Decl t::Decls
   top.constraints := h.constraints ++ t.constraints;
   top.hasVars = h.hasVars || t.hasVars;
   top.substDecls = \s::Subst -> declsCons(h.substDecl(s), t.substDecls(s));
+
+  local soln :: Either<[Message] [Subst]> = solveAll(top.constraints, []);
+  top.errors <- fromLeft(soln, []);
+  top.unified = top.substsDecls(soln.fromRight);
 }
 
 aspect production declsNil
@@ -82,6 +97,7 @@ top::Decls ::=
   top.constraints := [];
   top.hasVars = false;
   top.substDecls = \s::Subst -> declsNil();
+  top.unified = top;
 }
 
 synthesized attribute substDecl :: (Decl ::= Subst) occurs on Decl;

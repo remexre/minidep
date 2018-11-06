@@ -1,8 +1,8 @@
 l : List Nat;
 l = [1, 2, 1 + 2, 2 * 2];
 
-lst : {T: TYPE} TYPE;
+lst : {T: TYPE} -> TYPE;
 lst = List;
 
--- foo : {U: TYPE, T: TYPE, V: TYPE} TYPE;
+-- foo : {U: TYPE, T: TYPE, V: TYPE} -> TYPE;
 -- foo = Nat;

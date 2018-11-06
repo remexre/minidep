@@ -71,7 +71,7 @@ top::Expr ::= f::Expr x::Expr
 aspect production lam
 top::Expr ::= name::String body::Expr
 {
-  top.expr1_c = lam_c('\', terminal(Name_t, name, top.location), '.',
+  top.expr1_c = lam_c('\', terminal(Name_t, name, top.location), '->',
     body.expr1_c, location=top.location);
   top.expr2_c = expr23_c(top.expr3_c, location=top.location);
   top.expr3_c = expr34_c(top.expr4_c, location=top.location);
@@ -83,8 +83,8 @@ aspect production pi
 top::Expr ::= name::Maybe<String> l::Expr r::Expr
 {
   top.expr1_c = case name of
-  | just(name) -> pi_c('Pi', terminal(Name_t, name, top.location),
-      ':', l.expr2_c, '.', r.expr1_c, location=top.location)
+  | just(name) -> pi_c('(', terminal(Name_t, name, top.location),
+      ':', l.expr2_c, ')', '->', r.expr1_c, location=top.location)
   | nothing() -> arr_c(l.expr2_c, '->', r.expr1_c, location=top.location)
   end;
   top.expr2_c = expr23_c(top.expr3_c, location=top.location);

@@ -24,14 +24,17 @@ function main
 IOVal<Integer> ::= args::[String] ioIn::IO
 {
   local defaultEnv :: [Pair<String String>] =
-    [ pair("Nat",  "TYPE")
-    , pair("zero", "Nat")
-    , pair("succ", "Nat -> Nat")
-    , pair("(+)", "Nat -> Nat -> Nat")
-    , pair("(*)", "Nat -> Nat -> Nat")
-    , pair("List", "TYPE -> TYPE")
-    , pair("nil",  "{T: TYPE} List T")
-    , pair("cons", "{T: TYPE} T -> List T -> List T")
+    [ pair("Bool",  "TYPE")
+    , pair("true",  "Bool")
+    , pair("false", "Bool")
+    , pair("Nat",   "TYPE")
+    , pair("zero",  "Nat")
+    , pair("succ",  "Nat -> Nat")
+    , pair("(+)",   "Nat -> Nat -> Nat")
+    , pair("(*)",   "Nat -> Nat -> Nat")
+    , pair("List",  "TYPE -> TYPE")
+    , pair("nil",   "{T: TYPE} -> List T")
+    , pair("cons",  "{T: TYPE} -> T -> List T -> List T")
     ];
   local implicitDefaultEnv :: [Pair<String Maybe<Decorated implicit:Signature>>] = foldl(
     \l::[Pair<String Maybe<Decorated implicit:Signature>>] p::Pair<String String> ->

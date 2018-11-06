@@ -1,0 +1,16 @@
+Bool : TYPE
+true : Bool
+false : Bool
+
+Nat : TYPE
+zero : Nat
+succ : Nat -> Nat
+(+) : Nat -> Nat -> Nat
+(*) : Nat -> Nat -> Nat
+
+List : TYPE -> TYPE
+nil : {T: TYPE} -> List T
+cons : {T: TYPE} -> T -> List T -> List T
+
+the : (T: TYPE) -> T -> T
+the _ x = x

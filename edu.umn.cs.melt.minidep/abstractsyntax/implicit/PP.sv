@@ -41,7 +41,7 @@ top::Implicits ::= n::String e::Expr t::Implicits
   local name :: Name_t = terminal(Name_t, n, top.location);
   local ty :: ImplicitTy_c = implicitTy_c(name, ':', e.expr1_c);
   local val :: ImplicitVal_c = implicitVal_c(name, '=', e.expr1_c);
-  top.implicitTys_c = implicitTysSome_c('{', ty, t.implicitTyList_c, '}', location=top.location);
+  top.implicitTys_c = implicitTysSome_c('{', ty, t.implicitTyList_c, '}', '->', location=top.location);
   top.implicitTyList_c = implicitTysCons_c(',', ty, t.implicitTyList_c, location=top.location);
   top.implicitVal_c = implicitVal_c(name, '=', e.expr1_c);
   top.implicitVals_c = implicitValsCons_c(',', top.implicitVal_c, t.implicitVals_c,
@@ -83,7 +83,7 @@ top::Expr ::= l::Expr r::Expr
 aspect production lam
 top::Expr ::= name::String body::Expr
 {
-  top.expr1_c = lam_c('\', terminal(Name_t, name, top.location), '.',
+  top.expr1_c = lam_c('\', terminal(Name_t, name, top.location), '->',
     body.expr1_c, location=top.location);
   top.expr2_c = expr23_c(top.expr3_c, location=top.location);
   top.expr3_c = expr34_c(top.expr4_c, location=top.location);
@@ -95,8 +95,8 @@ aspect production pi
 top::Expr ::= name::Maybe<String> l::Expr r::Expr
 {
   top.expr1_c = case name of
-  | just(name) -> pi_c('Pi', terminal(Name_t, name, top.location),
-      ':', l.expr2_c, '.', r.expr1_c, location=top.location)
+  | just(name) -> pi_c('(', terminal(Name_t, name, top.location),
+      ':', l.expr2_c, ')', '->', r.expr1_c, location=top.location)
   | nothing() -> arr_c(l.expr2_c, '->', r.expr1_c, location=top.location)
   end;
   top.expr2_c = expr23_c(top.expr3_c, location=top.location);

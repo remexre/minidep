@@ -15,7 +15,6 @@ terminal Times_t  '*'  lexer classes {OPERATOR};
 
 terminal Backslash_t '\';
 terminal Comma_t     ',';
-terminal Dot_t       '.';
 terminal Semicolon_t ';';
 
 terminal LParen_t '(';

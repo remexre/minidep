@@ -99,13 +99,13 @@ nonterminal Expr4_c with ast<Expr>, location, pp;
 nonterminal Expr5_c with ast<Expr>, location, pp;
 
 concrete production lam_c
-top::Expr1_c ::= '\' arg::Name_t '.' body::Expr1_c
+top::Expr1_c ::= '\' arg::Name_t '->' body::Expr1_c
 {
   top.ast = lam(arg.lexeme, body.ast, location=top.location);
   top.pp = ppConcat(
     [ text("\\")
     , text(arg.lexeme)
-    , text(". ")
+    , text(" -> ")
     , body.pp
     ]);
 }
@@ -118,27 +118,17 @@ top::Expr1_c ::= l::Expr2_c '->' r::Expr1_c
 }
 
 concrete production pi_c
-top::Expr1_c ::= 'Pi' arg::Name_t ':' ty::Expr2_c '.' body::Expr1_c
+top::Expr1_c ::= '(' arg::Name_t ':' ty::Expr2_c ')' '->' body::Expr1_c
 {
   top.ast = pi(just(arg.lexeme), ty.ast, body.ast, location=top.location);
   top.pp = ppConcat(
-    [ text("Pi ")
+    [ text("(")
     , text(arg.lexeme)
-    , text(": ")
+    , text(" : ")
     , ty.pp
-    , text(". ")
+    , text(") -> ")
     , body.pp
     ]);
-}
-
-concrete production tyAnnot_c
-top::Expr1_c ::= l::Expr2_c ':' r::Expr1_c
-{
-  top.ast = app(app(var("(:)", implicitsNil(location=top.location),
-                        location=top.location),
-    l.ast, location=top.location),
-    r.ast, location=top.location);
-  top.pp = cat(l.pp, cat(text(" : "), r.pp));
 }
 
 concrete production add_c
@@ -312,7 +302,7 @@ top::ImplicitTys_c ::=
 }
 
 concrete production implicitTysSome_c
-top::ImplicitTys_c ::= '{' h::ImplicitTy_c t::ImplicitTyList_c '}'
+top::ImplicitTys_c ::= '{' h::ImplicitTy_c t::ImplicitTyList_c '}' '->'
 {
   top.ast = implicitsCons(h.ast.fst, h.ast.snd, t.ast, location=top.location);
   top.implicitTyCsts = cons(h, t.implicitTyCsts);

@@ -1,3 +1,5 @@
 -- This has a bug: I need to pass the type to the identity function.
 -- ((\T. \x. x) : Pi T:TYPE. T -> T) (100 + 3) + 20
-(\x. 1 + 2 + x * 4) : Nat -> T
+
+l : Nat -> Nat;
+l = \x. 1 + 2 + x * 4;
