@@ -42,23 +42,6 @@ top::Decls_c ::= name::Name_t ':' imps::ImplicitTys_c ty::Expr1_c ';' tl::Decls_
   | _ -> tl.errors
   end;
 
-  {-
-  local tmp :: Pair<Decls Decls_c> = case tl of
-  | declsConsDef_c(n, _, expr, _, tl2) ->
-      if n.lexeme == name.lexeme then
-        pair(declsCons(declDef(name.lexeme, imps.ast, ty.ast, expr.ast, location=top.location),
-                       tl2.ast),
-             tl2)
-      else
-        pair(declsCons(declDecl(name.lexeme, imps.ast, ty.ast, location=top.location), tl.ast),
-             tl)
-  | _ -> pair(declsCons(declDecl(name.lexeme, imps.ast, ty.ast, location=top.location), tl.ast),
-              tl)
-  end;
-  top.ast = tmp.fst;
-  top.errors := tmp.snd.errors;
-  -}
-
   top.pp = ppConcat(
     [ text(name.lexeme)
     , text(" : ")
@@ -332,7 +315,7 @@ top::ImplicitTys_c ::= '{' h::ImplicitTy_c t::ImplicitTyList_c '}' '->'
 {
   top.ast = implicitsCons(h.ast.fst, h.ast.snd, t.ast, location=top.location);
   top.implicitTyCsts = cons(h, t.implicitTyCsts);
-  top.pp = cat(braces(cat(h.pp, t.pp)), space());
+  top.pp = cat(braces(cat(h.pp, t.pp)), text(" -> "));
 }
 
 nonterminal ImplicitTyList_c with ast<Implicits>, implicitTyCsts, location, pp;
