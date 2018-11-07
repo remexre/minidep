@@ -1,0 +1,2 @@
+reverse : {T: TYPE} -> List T -> List T;
+reverse = foldl (flip cons) nil;

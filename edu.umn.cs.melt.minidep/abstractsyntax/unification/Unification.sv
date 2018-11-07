@@ -11,42 +11,85 @@ abstract production substVar
 top::Subst ::= var::Integer expr::Expr
 {}
 
-closed nonterminal Constraint with pp, solve, substConstraint;
-synthesized attribute solve :: Either<[Message] Pair<[Constraint] Maybe<Subst>>>;
+closed nonterminal Constraint with cause, location, pp, solve, substConstraint;
+synthesized attribute cause :: Maybe<Constraint>;
+synthesized attribute solve :: Either<[Message] Pair<[Constraint] [Subst]>>;
 synthesized attribute substConstraint :: (Constraint ::= Subst);
 
-abstract production constraintEq
-top::Constraint ::= l::Expr r::Expr
+aspect default production
+top::Constraint ::=
 {
-  local loc :: Location = if l.location.index == -1 && r.location.index != -1
-                          then r.location
-                          else l.location;
+  top.cause = nothing();
+}
 
+function causes
+[Constraint] ::= c::Constraint
+{
+  return case c.cause of
+  | just(h) -> c :: causes(c)
+  | nothing() -> []
+  end;
+}
+
+abstract production constraintEq
+top::Constraint ::= l::Expr r::Expr cause::Maybe<Constraint>
+{
+  top.cause = cause;
   top.pp = ppConcat(
     [ l.expr5_c.pp
     , text(" ~ ")
     , r.expr5_c.pp
     ]);
-  top.solve =
+  local solve :: Maybe<Pair<[Constraint] [Subst]>> =
     case l, r of
-    | unificationVar(l), _ -> right(pair([], just(substVar(l, r))))
-    | _, unificationVar(_) -> right(pair([constraintEq(r, l)], nothing()))
-    | app(lf, lx), app(rf, rx) -> right(pair([constraintEq(lf, rf), constraintEq(lx, rx)], nothing()))
-    | pi(nothing(), ll, lr), pi(nothing(), rl, rr) -> right(pair([ constraintEq(ll, rl)
-                                                                 , constraintEq(lr, rr)
-                                                                 ], nothing()))
-    | universe(), universe() -> right(pair([], nothing()))
+    | unificationVar(l), _ -> just(pair([], [substVar(l, r)]))
+    | _, unificationVar(_) -> just(pair([constraintEq(r, l, just(top), location=top.location)], []))
+    | app(lf, lx), app(rf, rx) -> just(pair([ constraintEq(lf, rf, just(top), location=top.location)
+                                            , constraintEq(lx, rx, just(top), location=top.location)
+                                            ], []))
+    | pi(nothing(), ll, lr), pi(nothing(), rl, rr) -> just(pair([ constraintEq(ll, rl, just(top), location=top.location)
+                                                                , constraintEq(lr, rr, just(top), location=top.location)
+                                                                ], []))
+    | pi(ln, ll, lr), pi(rn, rl, rr) ->
+        let
+          newName :: String = genSym()
+        in let
+             l2 :: Expr = case ln of
+             | just(n) -> l.beta(n, var(newName, location=l.location))
+             | nothing() -> pi(just(newName), ll, lr, location=l.location)
+             end,
+             r2 :: Expr = case rn of
+             | just(n) -> r.beta(n, var(newName, location=r.location))
+             | nothing() -> pi(just(newName), rl, rr, location=r.location)
+             end
+           in
+             just(pair([ constraintEq(ll, rl, just(top), location=top.location)
+                       , constraintEq(l2, r2, just(top), location=top.location)
+                       ], []))
+           end
+        end
+    | universe(), universe() -> just(pair([], []))
     | var(ln), var(rn) -> if ln == rn
-                        then right(pair([], nothing()))
-                        else left([err(loc, show(80, ppImplode(space(),
-                                    [ text("Cannot unify")
-                                    , l.expr5_c.pp
-                                    , text("with")
-                                    , r.expr5_c.pp
-                                    ])))])
-    | _, _ -> error("TODO Solve " ++ show(80, top.pp))
+                        then just(pair([], []))
+                        else nothing()
+    | _, _ -> nothing()
     end;
-  top.substConstraint = \s::Subst -> constraintEq(l.substExpr(s), r.substExpr(s));
+  top.solve = case solve of
+  | just(x) -> right(x)
+  | nothing() ->
+      let
+        baseMsg :: Document = ppImplode(space(),
+          [ text("Cannot unify")
+          , l.expr5_c.pp
+          , text("with")
+          , r.expr5_c.pp
+          ]),
+        causeMsgs :: [Document] = map(\c::Constraint -> cat(text("While solving "), c.pp), [top.cause.fromJust])
+      in
+        left([err(top.location, show(80, ppImplode(line(), causeMsgs ++ [baseMsg])))])
+      end
+  end;
+  top.substConstraint = \s::Subst -> constraintEq(l.substExpr(s), r.substExpr(s), cause, location=top.location);
 }
 
 autocopy attribute inhTyEnv :: [Pair<String Maybe<Expr>>] occurs on Decl, Decls, Expr;
@@ -65,9 +108,8 @@ Either<[Message] [Subst]> ::= cs::[Constraint] ss::[Subst]
   | h::t ->
       case h.solve of
       | left(errs) -> left(errs)
-      | right(pair(newCs, just(s))) -> solveAll(
-            newCs ++ map(\c::Constraint -> c.substConstraint(s), t), s::ss)
-      | right(pair(newCs, nothing())) -> solveAll(newCs ++ t, ss)
+      | right(pair(newCs, newSs)) -> solveAll(newCs ++ map(\c::Constraint ->
+          foldr(\s::Subst c::Constraint -> c.substConstraint(s), c, newSs), t), newSs ++ ss)
       end
   | [] -> right(ss)
   end;
@@ -124,7 +166,6 @@ top::Decl ::= name::String ty::Expr body::Expr
 {
   ty.inhTy = nothing();
   body.inhTy = just(ty);
-  -- TODO: Include pi type variables from ty in body.inhTyEnv?
 
   top.constraints := ty.constraints ++ body.constraints;
   top.unificationVars = ty.unificationVars ++ body.unificationVars;
@@ -151,10 +192,6 @@ top::Expr ::= f::Expr x::Expr
   | pi(_, t, _) -> just(t)
   | _ -> nothing()
   end;
-  x.inhTyEnv = case f.synTy of
-  | pi(just(n), l, _) -> [pair(n, just(l))]
-  | _ -> []
-  end ++ top.inhTyEnv;
 
   top.errors <- case f.synTy of
   | pi(_, t, _) -> []
@@ -162,7 +199,7 @@ top::Expr ::= f::Expr x::Expr
   end;
 
   top.constraints := case top.inhTy of
-  | just(ty) -> [constraintEq(top.synTy, ty)]
+  | just(ty) -> [constraintEq(top.synTy, ty, nothing(), location=top.location)]
   | nothing() -> []
   end;
   top.constraints <- f.constraints ++ x.constraints;
@@ -197,7 +234,7 @@ top::Expr ::= name::String body::Expr
   end;
 
   top.constraints := case top.inhTy of
-  | just(ty) -> [constraintEq(top.synTy, ty)]
+  | just(ty) -> [constraintEq(top.synTy, ty, nothing(), location=top.location)]
   | nothing() -> []
   end;
 
@@ -217,7 +254,7 @@ top::Expr ::= name::Maybe<String> l::Expr r::Expr
   end;
 
   top.constraints := case top.inhTy of
-  | just(ty) -> [constraintEq(top.synTy, ty)]
+  | just(ty) -> [constraintEq(top.synTy, ty, nothing(), location=top.location)]
   | nothing() -> []
   end;
 
@@ -261,7 +298,7 @@ aspect production var
 top::Expr ::= s::String
 {
   top.constraints := case top.inhTy of
-  | just(ty) -> [constraintEq(top.synTy, ty)]
+  | just(ty) -> [constraintEq(top.synTy, ty, nothing(), location=top.location)]
   | nothing() -> []
   end;
   top.errors <- case lookupBy(stringEq, s, top.inhTyEnv) of

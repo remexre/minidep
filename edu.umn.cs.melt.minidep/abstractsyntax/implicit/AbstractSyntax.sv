@@ -47,6 +47,7 @@ abstract production declDef
 top::Decl ::= name::String implicits::Implicits ty::Expr body::Expr
 {
   ty.env = implicits.synEnv ++ top.env;
+  body.env = implicits.synEnv ++ top.env;
   top.errors := implicits.errors ++ ty.errors ++ body.errors;
   top.sigs = [pair(name, decorate sig(implicits, ty) with { env = top.env; })];
 }

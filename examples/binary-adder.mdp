@@ -1,0 +1,11 @@
+Bit : Nat -> TYPE;
+I : Bit (succ zero);
+O : Bit zero;
+
+Bin : Nat -> Nat -> TYPE;
+binZero : Bin zero zero;
+binSnoc : {b: Nat, n: Nat, w: Nat} -> Bin w n -> Bit b -> Bin (succ w) (b + n + n);
+
+-- fullAdder : Bit c -> 
+
+add : {c: Nat, p: Nat, q: Nat, w: Nat} -> Bit c -> Bin w p -> Bin w q -> Bin (succ w) (c + p + q);

@@ -2,7 +2,7 @@ l : List Nat;
 l = [1, 2, 1 + 2, 2 * 2];
 
 lst : {T: TYPE} -> TYPE;
-lst = List;
+lst = List T;
 
--- foo : {U: TYPE, T: TYPE, V: TYPE} -> TYPE;
--- foo = Nat;
+foo : {U: TYPE, T: TYPE, V: TYPE} -> TYPE;
+foo = Nat;

@@ -5,12 +5,29 @@ false : Bool;
 Nat : TYPE;
 zero : Nat;
 succ : Nat -> Nat;
-plus : Nat -> Nat -> Nat;
-times : Nat -> Nat -> Nat;
+(+) : Nat -> Nat -> Nat;
+(*) : Nat -> Nat -> Nat;
 
 List : TYPE -> TYPE;
 nil : {T: TYPE} -> List T;
 cons : {T: TYPE} -> T -> List T -> List T;
 
+id : {T: TYPE} -> T -> T;
+id = \x -> x;
 the : (T: TYPE) -> T -> T;
-the = \_ x -> x;
+the = \T -> id {T=T};
+
+(=) : TYPE -> TYPE -> TYPE;
+refl : {a: TYPE} -> a -> a -> a = a;
+
+foldl : {T: TYPE, U: TYPE} -> (U -> T -> U) -> U -> List T -> U;
+-- TODO: Implement foldl
+
+foldr : {T: TYPE, U: TYPE} -> (T -> U -> U) -> U -> List T -> U;
+-- TODO: Implement foldr
+
+map : {T: TYPE, U: TYPE} -> (T -> U) -> List T -> List U;
+map = \f -> foldr (\h t -> cons (f h) t);
+
+flip : {T: TYPE, U: TYPE, V: TYPE} -> (T -> U -> V) -> (U -> T -> V);
+flip = \f x y -> f y x;

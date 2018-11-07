@@ -19,17 +19,6 @@ top::Root_c ::= decls::Decls_c
   top.pp = decls.pp;
 }
 
--- The signature nonterminal and production.
-
-nonterminal Sig_c with ast<Signature>, location, pp;
-
-concrete production sig_c
-top::Sig_c ::= imps::ImplicitTys_c ty::Expr1_c
-{
-  top.ast = sig(imps.ast, ty.ast);
-  top.pp = cat(imps.pp, ty.pp);
-}
-
 -- The declaration, claim, and definition nonterminals and productions.
 
 nonterminal Decls_c with ast<Decls>, errors, location, pp;
@@ -147,10 +136,20 @@ top::Expr1_c ::= '(' arg::Name_t ':' ty::Expr2_c ')' '->' body::Expr1_c
     ]);
 }
 
+concrete production eq_c
+top::Expr1_c ::= l::Expr2_c '=' r::Expr1_c
+{
+  top.ast = app(app(var("(=)", implicitsNil(location=top.location),
+                        location=top.location),
+    l.ast, location=top.location),
+    r.ast, location=top.location);
+  top.pp = ppConcat([l.pp, text(" = "), r.pp]);
+}
+
 concrete production add_c
 top::Expr2_c ::= l::Expr2_c '+' r::Expr3_c
 {
-  top.ast = app(app(var("plus", implicitsNil(location=top.location),
+  top.ast = app(app(var("(+)", implicitsNil(location=top.location),
                         location=top.location),
     l.ast, location=top.location),
     r.ast, location=top.location);
@@ -160,7 +159,7 @@ top::Expr2_c ::= l::Expr2_c '+' r::Expr3_c
 concrete production mul_c
 top::Expr3_c ::= l::Expr3_c '*' r::Expr4_c
 {
-  top.ast = app(app(var("times", implicitsNil(location=top.location),
+  top.ast = app(app(var("(*)", implicitsNil(location=top.location),
                         location=top.location),
     l.ast, location=top.location),
     r.ast, location=top.location);

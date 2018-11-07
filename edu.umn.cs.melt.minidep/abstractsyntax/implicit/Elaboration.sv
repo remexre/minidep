@@ -25,7 +25,7 @@ synthesized attribute elaboratedExpr :: unification:Expr occurs on Expr, Signatu
 aspect production sig
 top::Signature ::= implicits::Implicits ty::Expr
 {
-  top.elaboratedExpr = implicits.appTo(top.env, ty.elaboratedExpr);
+  top.elaboratedExpr = implicits.appPiTo(top.env, ty.elaboratedExpr);
 }
 
 synthesized attribute elaboratedDecl :: unification:Decl occurs on Decl;
@@ -33,24 +33,29 @@ synthesized attribute elaboratedDecl :: unification:Decl occurs on Decl;
 aspect production declDecl
 top::Decl ::= name::String implicits::Implicits ty::Expr
 {
-  top.elaboratedDecl = unification:declDecl(name, implicits.appTo(top.env, ty.elaboratedExpr),
+  top.elaboratedDecl = unification:declDecl(name, implicits.appPiTo(top.env, ty.elaboratedExpr),
                                             location=top.location);
 }
 
 aspect production declDef
 top::Decl ::= name::String implicits::Implicits ty::Expr body::Expr
 {
-  top.elaboratedDecl = unification:declDef(name, implicits.appTo(top.env, ty.elaboratedExpr),
-                                            body.elaboratedExpr, location=top.location);
+  top.elaboratedDecl = unification:declDef(name, implicits.appPiTo(top.env, ty.elaboratedExpr),
+                                           implicits.appLamTo(top.env, body.elaboratedExpr),
+                                           location=top.location);
 }
 
-synthesized attribute appTo :: (unification:Expr ::= [Pair<String Maybe<Decorated Signature>>] unification:Expr) occurs on Implicits;
+synthesized attribute appLamTo :: (unification:Expr ::= [Pair<String Maybe<Decorated Signature>>] unification:Expr) occurs on Implicits;
+synthesized attribute appPiTo :: (unification:Expr ::= [Pair<String Maybe<Decorated Signature>>] unification:Expr) occurs on Implicits;
 synthesized attribute find :: (Maybe<Expr> ::= String) occurs on Implicits;
 
 aspect default production
 top::Implicits ::=
 {
-  top.appTo = \env::[Pair<String Maybe<Decorated Signature>>] ex::unification:Expr -> foldr(
+  top.appLamTo = \env::[Pair<String Maybe<Decorated Signature>>] ex::unification:Expr -> foldr(
+    \h::Pair<String Expr> t::unification:Expr -> unification:lam(h.fst, t, location=top.location),
+    ex, top.sorted);
+  top.appPiTo = \env::[Pair<String Maybe<Decorated Signature>>] ex::unification:Expr -> foldr(
     \h::Pair<String Expr> t::unification:Expr ->
       unification:pi(just(h.fst), (decorate h.snd with { env = env; }).elaboratedExpr, t,
                      location=top.location),
