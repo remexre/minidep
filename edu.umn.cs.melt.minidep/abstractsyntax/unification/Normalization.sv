@@ -7,6 +7,12 @@ synthesized attribute normal :: Boolean occurs on Expr;
 synthesized attribute normalized :: Expr occurs on Expr;
 synthesized attribute reduce :: Expr occurs on Expr;
 
+aspect production declsCons
+top::Decls ::= h::Decl t::Decls
+{
+  t.inhValEnv = h.synValEnv ++ top.inhValEnv;
+}
+
 aspect default production
 top::Expr ::=
 {

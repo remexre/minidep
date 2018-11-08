@@ -107,6 +107,22 @@ autocopy attribute inhTyEnv :: [Pair<String Maybe<Expr>>] occurs on Decl, Decls,
 synthesized attribute constraints :: [Constraint] with ++;
 attribute constraints occurs on Decl, Expr;
 
+aspect production root
+top::Root ::= deps::[Pair<String Root>] decls::Decls
+{
+  local unifiedDeps :: [Pair<String Root>] = map(
+    \p::Pair<String Root> -> pair(p.fst, p.snd.unified),
+    deps);
+  decls.inhTyEnv = flatMap(\p::Pair<String Root> -> p.snd.decls.synTyEnv, unifiedDeps);
+  decls.inhValEnv = flatMap(\p::Pair<String Root> -> p.snd.decls.synValEnv, unifiedDeps);
+
+  top.unificationVars = foldr(
+    \p::Pair<String Root> s::set:Set<Pair<Integer Location>> -> set:union(p.snd.unificationVars, s),
+    decls.unificationVars,
+    deps);
+  top.unified = root(unifiedDeps, decls.unifiedDecls);
+}
+
 synthesized attribute substDecls :: (Decls ::= Subst) occurs on Decls;
 synthesized attribute substsDecls :: (Decls ::= [Subst]) occurs on Decls;
 synthesized attribute unifiedDecls :: Decls occurs on Decls;
@@ -137,16 +153,17 @@ top::Decls ::=
 aspect production declsCons
 top::Decls ::= h::Decl t::Decls
 {
-  t.inhTyEnv = h.sigs ++ top.inhTyEnv;
+  t.inhTyEnv = h.synTyEnv ++ top.inhTyEnv;
 
   top.unificationVars = set:union(h.unificationVars, t.unificationVars);
   top.substDecls = \s::Subst -> declsCons(h.substDecl(s), t.substDecls(s));
 
   local soln :: Either<[Message] [Subst]> = solveAll(h.constraints, []);
   top.errors <- fromLeft(soln, []);
-  top.unifiedDecls = declsCons(h.substsDecl(soln.fromRight), decorate t.substsDecls(soln.fromRight) with {
-    inhTyEnv = top.inhTyEnv;
-  }.unifiedDecls);
+
+  local tailUnifiedDecls :: Decls = t.substsDecls(soln.fromRight);
+  tailUnifiedDecls.inhTyEnv = t.inhTyEnv;
+  top.unifiedDecls = declsCons(h.substsDecl(soln.fromRight), tailUnifiedDecls);
 }
 
 aspect production declsNil
@@ -157,7 +174,6 @@ top::Decls ::=
   top.unifiedDecls = top;
 }
 
-synthesized attribute sigs :: [Pair<String Maybe<Expr>>] occurs on Decl;
 synthesized attribute substDecl :: (Decl ::= Subst) occurs on Decl;
 synthesized attribute substsDecl :: (Decl ::= [Subst]) occurs on Decl;
 
@@ -177,7 +193,6 @@ top::Decl ::= name::String ty::Expr
 
   top.constraints := ty.constraints;
   top.unificationVars = ty.unificationVars;
-  top.sigs = [pair(name, just(ty))];
   top.substDecl = \s::Subst -> declDecl(name, ty.substExpr(s), location=top.location);
 }
 
@@ -189,7 +204,6 @@ top::Decl ::= name::String ty::Expr body::Expr
 
   top.constraints := ty.constraints ++ body.constraints;
   top.unificationVars = set:union(ty.unificationVars, body.unificationVars);
-  top.sigs = [pair(name, just(ty))];
   top.substDecl = \s::Subst ->
     declDef(name, ty.substExpr(s), body.substExpr(s), location=top.location);
 }
@@ -331,6 +345,7 @@ top::Expr ::= s::String
   top.synTy = case lookupBy(stringEq, s, top.inhTyEnv) of
   | just(just(t)) -> t
   | just(nothing()) -> error("Cannot infer type of bound variable " ++ s)
-  | nothing() -> error("Cannot infer type of free variable " ++ s)
+  | nothing() -> error("Cannot infer type of free variable " ++ s ++
+      show(80, cat(space(), brackets(ppImplode(space(), map(\p::Pair<String Maybe<Expr>> -> text(p.fst), top.inhTyEnv))))))
   end;
 }

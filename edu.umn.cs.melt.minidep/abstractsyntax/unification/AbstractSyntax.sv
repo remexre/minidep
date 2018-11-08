@@ -12,9 +12,6 @@ synthesized attribute deps :: [Pair<String Root>];
 abstract production root
 top::Root ::= deps::[Pair<String Root>] decls::Decls
 {
-  decls.inhTyEnv = flatMap(\p::Pair<String Root> -> p.snd.decls.synTyEnv, deps);
-  decls.inhValEnv = flatMap(\p::Pair<String Root> -> p.snd.decls.synValEnv, deps);
-
   top.decls = decls;
   top.deps = deps;
   top.errors := decls.errors ++ flatMap(
