@@ -122,7 +122,7 @@ top::Expr ::= name::Maybe<String> l::Expr r::Expr
 {
   top.expr1_c = case name of
   | just(name) -> pi_c('(', terminal(Name_t, name, top.location),
-      ':', l.expr2_c, ')', '->', r.expr1_c, location=top.location)
+      ':', l.expr1_c, ')', '->', r.expr1_c, location=top.location)
   | nothing() -> arr_c(l.expr2_c, '->', r.expr1_c, location=top.location)
   end;
   top.expr2_c = expr23_c(top.expr3_c, location=top.location);

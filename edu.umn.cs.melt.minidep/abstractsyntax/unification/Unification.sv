@@ -232,10 +232,15 @@ top::Expr ::= f::Expr x::Expr
   | t -> [wrn(top.location, show(80, cat(t.pp, text(" is not a pi type"))))]
   end;
 
+  local lTy :: Expr = top.synTy;
+  local rTy :: Expr = top.inhTy.fromJust;
+  lTy.inhValEnv = top.inhValEnv;
+  rTy.inhValEnv = top.inhValEnv;
   top.constraints := case top.inhTy of
-  | just(ty) -> [constraintEq(top.synTy, ty, nothing(), location=top.location)]
+  | just(ty) -> [constraintEq(lTy.normalized, rTy.normalized, nothing(), location=top.location)]
   | nothing() -> []
   end;
+
   top.constraints <- f.constraints ++ x.constraints;
   top.unificationVars = set:union(f.unificationVars, x.unificationVars);
   top.substExpr = \s::Subst -> app(f.substExpr(s), x.substExpr(s), location=top.location);
@@ -267,8 +272,12 @@ top::Expr ::= name::String body::Expr
      end
   end;
 
+  local lTy :: Expr = top.synTy;
+  local rTy :: Expr = top.inhTy.fromJust;
+  lTy.inhValEnv = top.inhValEnv;
+  rTy.inhValEnv = top.inhValEnv;
   top.constraints := case top.inhTy of
-  | just(ty) -> [constraintEq(top.synTy, ty, nothing(), location=top.location)]
+  | just(ty) -> [constraintEq(lTy.normalized, rTy.normalized, nothing(), location=top.location)]
   | nothing() -> []
   end;
 
@@ -287,8 +296,12 @@ top::Expr ::= name::Maybe<String> l::Expr r::Expr
   | nothing() -> top.inhTyEnv
   end;
 
+  local lTy :: Expr = top.synTy;
+  local rTy :: Expr = top.inhTy.fromJust;
+  lTy.inhValEnv = top.inhValEnv;
+  rTy.inhValEnv = top.inhValEnv;
   top.constraints := case top.inhTy of
-  | just(ty) -> [constraintEq(top.synTy, ty, nothing(), location=top.location)]
+  | just(ty) -> [constraintEq(lTy.normalized, rTy.normalized, nothing(), location=top.location)]
   | nothing() -> []
   end;
 
@@ -331,10 +344,15 @@ top::Expr ::=
 aspect production var
 top::Expr ::= s::String
 {
+  local lTy :: Expr = top.synTy;
+  local rTy :: Expr = top.inhTy.fromJust;
+  lTy.inhValEnv = top.inhValEnv;
+  rTy.inhValEnv = top.inhValEnv;
   top.constraints := case top.inhTy of
-  | just(ty) -> [constraintEq(top.synTy, ty, nothing(), location=top.location)]
+  | just(ty) -> [constraintEq(lTy.normalized, rTy.normalized, nothing(), location=top.location)]
   | nothing() -> []
   end;
+
   top.errors <- case lookupBy(stringEq, s, top.inhTyEnv) of
   | just(just(t)) -> []
   | just(nothing()) -> [err(top.location, "Cannot infer type of bound variable " ++ s)]

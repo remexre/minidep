@@ -1,6 +1,7 @@
 Bool : TYPE;
 true : Bool;
 false : Bool;
+elimBool : (m: Bool -> TYPE) -> m true -> m false -> (b: Bool) -> m b;
 
 Nat : TYPE;
 zero : Nat;

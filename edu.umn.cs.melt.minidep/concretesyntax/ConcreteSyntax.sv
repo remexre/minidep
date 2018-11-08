@@ -150,13 +150,13 @@ top::Expr1_c ::= l::Expr2_c '->' r::Expr1_c
 }
 
 concrete production pi_c
-top::Expr1_c ::= '(' arg::Name_t ':' ty::Expr2_c ')' '->' body::Expr1_c
+top::Expr1_c ::= '(' arg::Name_t ':' ty::Expr1_c ')' '->' body::Expr1_c
 {
   top.ast = pi(just(arg.lexeme), ty.ast, body.ast, location=top.location);
   top.pp = ppConcat(
     [ text("(")
     , text(arg.lexeme)
-    , text(" : ")
+    , text(": ")
     , ty.pp
     , text(") -> ")
     , body.pp
