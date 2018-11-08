@@ -1,0 +1,7 @@
+import "stdlib.mdp";
+
+z_eq_z : 0 = 0;
+z_eq_z = refl 0;
+
+two_plus_two : (2 + 2) = 4;
+two_plus_two = refl 4;

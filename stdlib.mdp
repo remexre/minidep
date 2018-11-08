@@ -17,8 +17,8 @@ id = \x -> x;
 the : (T: TYPE) -> T -> T;
 the = \T -> id {T=T};
 
-(=) : TYPE -> TYPE -> TYPE;
-refl : {a: TYPE} -> a -> a -> a = a;
+(=) : {T: TYPE} -> T -> T -> TYPE;
+refl : {T: TYPE} -> (a: T) -> a = a;
 
 foldl : {T: TYPE, U: TYPE} -> (U -> T -> U) -> U -> List T -> U;
 -- TODO: Implement foldl

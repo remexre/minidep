@@ -60,6 +60,12 @@ IOMonad<Either<[Message] Unit>> ::= errs::[Message]
          else throw(errs);
 }
 
+function throwOne
+IOMonad<Either<[Message] a>> ::= errs::Message
+{
+  return throw([errs]);
+}
+
 function mustParse
 IOMonad<Either<[Message] a>> ::= parse::(ParseResult<a> ::= String String) path::String
 {

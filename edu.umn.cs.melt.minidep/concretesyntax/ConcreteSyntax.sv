@@ -5,23 +5,67 @@ import edu:umn:cs:melt:minidep:util;
 import silver:langutil;
 import silver:langutil:pp;
 
-synthesized attribute ast<a> :: a;
-
 -- The root nonterminal and associated productions.
 
-nonterminal Root_c with ast<Decls>, errors, location, pp;
+nonterminal Root_c with errors, imps, location, pp, root;
+synthesized attribute imps :: [String];
+synthesized attribute root :: (Root ::= [Pair<String Root>]);
 
 concrete production root_c
-top::Root_c ::= decls::Decls_c
+top::Root_c ::= imps::Imports_c decls::Decls_c
 {
-  top.ast = decls.ast;
   top.errors := decls.errors;
-  top.pp = decls.pp;
+  top.imps = imps.imps;
+  top.pp = cat(imps.pp, decls.pp);
+  top.root = root(_, decls.ast);
+}
+
+-- The import nonterminal.
+
+nonterminal Import_c with location, name, pp;
+synthesized attribute name :: String;
+
+concrete production import_c
+top::Import_c ::= 'import' name::String_c ';'
+{
+  top.name = name.string;
+  top.pp = ppConcat(
+    [ text("import \"")
+    , text(name.string) -- TODO: Escapes aren't handled, but _hopefully_
+                        -- there're no escapes in your filenames, either.
+    , text("\";")
+    ]);
+}
+
+nonterminal Imports_c with errors, imps, location, pp;
+
+concrete production importsCons_c
+top::Imports_c ::= hd::Import_c tl::Imports_c
+{
+  top.errors := tl.errors;
+  top.errors <- if containsBy(stringEq, hd.name, tl.imps)
+                then [err(hd.location, "Duplicate import")]
+                else [];
+  top.imps = hd.name :: tl.imps;
+  top.pp = ppConcat(
+    [ hd.pp
+    , line()
+    , tl.pp
+    ]);
+}
+
+concrete production importsNil_c
+top::Imports_c ::=
+{
+  top.errors := [];
+  top.imps = [];
+  top.pp = line();
 }
 
 -- The declaration, claim, and definition nonterminals and productions.
 
 nonterminal Decls_c with ast<Decls>, errors, location, pp;
+synthesized attribute ast<a> :: a;
 
 -- TODO: Use `layout` to not need semicolons
 -- http://melt.cs.umn.edu/silver/ref/decl/productions/concrete/#layout
@@ -267,6 +311,44 @@ top::Expr4_c ::= e::Expr5_c
 {
   top.ast = e.ast;
   top.pp = e.pp;
+}
+
+nonterminal String_c with location, string;
+synthesized attribute string :: String;
+
+concrete production string_c
+top::String_c ::= '"' chars::StringChars_c '"'
+layout {}
+{
+  top.string = chars.string;
+}
+
+nonterminal StringChars_c with location, string;
+
+concrete production stringCharsConsChr_c
+top::StringChars_c ::= hd::StrChr_t tl::StringChars_c
+layout {}
+{
+  top.string = hd.lexeme ++ tl.string;
+}
+
+concrete production stringCharsConsEsc_c
+top::StringChars_c ::= hd::StrEsc_t tl::StringChars_c
+layout {}
+{
+  top.string = case hd.lexeme of
+  | "\\\\" -> "\\"
+  | "\\n"  -> "\n"
+  | "\\r"  -> "\r"
+  | "\\t"  -> "\t"
+  | esc -> error("Unknown string escape: " ++ esc)
+  end ++ tl.string;
+}
+
+concrete production stringCharsNil_c
+top::StringChars_c ::=
+{
+  top.string = "";
 }
 
 nonterminal Expr1List_c with ast<[Expr]>, exprCsts;

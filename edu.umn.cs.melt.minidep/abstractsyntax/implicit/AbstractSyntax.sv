@@ -5,7 +5,22 @@ import silver:langutil;
 import silver:util:raw:treeset as set;
 
 autocopy attribute env :: [Pair<String Maybe<Decorated Signature>>];
-synthesized attribute sigs :: [Pair<String Decorated Signature>];
+synthesized attribute sigs :: [Pair<String Maybe<Decorated Signature>>];
+
+nonterminal Root with decls, deps, errors, pp, sigs;
+synthesized attribute decls :: Decls;
+synthesized attribute deps :: [Pair<String Root>];
+
+abstract production root
+top::Root ::= deps::[Pair<String Root>] decls::Decls
+{
+  decls.env = flatMap(\p::Pair<String Root> -> p.snd.sigs, deps);
+
+  top.decls = decls;
+  top.deps = deps;
+  top.errors := decls.errors;
+  top.sigs = decls.sigs;
+}
 
 nonterminal Decls with asList<Decl>, env, errors, pp, sigs;
 
@@ -13,7 +28,7 @@ abstract production declsCons
 top::Decls ::= h::Decl t::Decls
 {
   top.asList = h :: t.asList;
-  t.env = mapSndJust(reverse(h.sigs)) ++ top.env;
+  t.env = reverse(h.sigs) ++ top.env;
 
   top.errors := h.errors ++ t.errors;
   top.sigs = h.sigs ++ t.sigs;
@@ -40,7 +55,7 @@ top::Decl ::= name::String implicits::Implicits ty::Expr
 {
   ty.env = implicits.synEnv ++ top.env;
   top.errors := implicits.errors ++ ty.errors;
-  top.sigs = [pair(name, decorate sig(implicits, ty) with { env = top.env; })];
+  top.sigs = [pair(name, just(decorate sig(implicits, ty) with { env = top.env; }))];
 }
 
 abstract production declDef
@@ -49,7 +64,7 @@ top::Decl ::= name::String implicits::Implicits ty::Expr body::Expr
   ty.env = implicits.synEnv ++ top.env;
   body.env = implicits.synEnv ++ top.env;
   top.errors := implicits.errors ++ ty.errors ++ body.errors;
-  top.sigs = [pair(name, decorate sig(implicits, ty) with { env = top.env; })];
+  top.sigs = [pair(name, just(decorate sig(implicits, ty) with { env = top.env; }))];
 }
 
 nonterminal Implicits with asList<Pair<String Expr>>, env, errors, location, names, nameSet, sorted, synEnv;

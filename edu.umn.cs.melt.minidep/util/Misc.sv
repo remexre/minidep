@@ -6,25 +6,31 @@ import silver:util:raw:treeset as set;
 
 synthesized attribute asList<a> :: [a];
 
+function compareFstInteger
+Integer ::= l::Pair<Integer a> r::Pair<Integer b>
+{
+  return l.fst - r.fst;
+}
+
+function debug
+a ::= x::a pp::(Document ::= a)
+{
+  return unsafeTrace(x, print(show(80, cat(pp(x), line())), unsafeIO()));
+}
+
 function genSym
 String ::=
 {
   return "gensym#" ++ toString(genInt());
 }
 
-function lookupTyEnv
+function lookupEnv
 Maybe<a> ::= name::String env::[Pair<String Maybe<a>>]
 {
   return case lookupBy(stringEq, name, env) of
   | just(just(x)) -> just(x)
   | _ -> nothing()
   end;
-}
-
-function mapSndJust
-[Pair<a Maybe<b>>] ::= l::[Pair<a b>]
-{
-  return map(\p::Pair<a b> -> pair(p.fst, just(p.snd)), l);
 }
 
 function nestErrors

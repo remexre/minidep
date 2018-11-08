@@ -4,6 +4,7 @@ import edu:umn:cs:melt:minidep:concretesyntax only pp;
 import edu:umn:cs:melt:minidep:util;
 import silver:langutil;
 import silver:langutil:pp;
+import silver:util:raw:treeset as set;
 
 nonterminal Subst;
 
@@ -26,7 +27,7 @@ function causes
 [Constraint] ::= c::Constraint
 {
   return case c.cause of
-  | just(h) -> c :: causes(c)
+  | just(c) -> c :: causes(c)
   | nothing() -> []
   end;
 }
@@ -40,6 +41,13 @@ top::Constraint ::= l::Expr r::Expr cause::Maybe<Constraint>
     , text(" ~ ")
     , r.expr5_c.pp
     ]);
+
+  local decL :: Expr = l;
+  local decR :: Expr = r;
+
+  decL.inhTyEnv = error("TODO");
+  decR.inhTyEnv = error("TODO");
+
   local solve :: Maybe<Pair<[Constraint] [Subst]>> =
     case l, r of
     | unificationVar(l), _ -> just(pair([], [substVar(l, r)]))
@@ -54,17 +62,17 @@ top::Constraint ::= l::Expr r::Expr cause::Maybe<Constraint>
         let
           newName :: String = genSym()
         in let
-             l2 :: Expr = case ln of
-             | just(n) -> l.beta(n, var(newName, location=l.location))
-             | nothing() -> pi(just(newName), ll, lr, location=l.location)
+             lpi2 :: Expr = case ln of
+             | just(n) -> lr.beta(n, var(newName, location=l.location))
+             | nothing() -> lr
              end,
-             r2 :: Expr = case rn of
-             | just(n) -> r.beta(n, var(newName, location=r.location))
-             | nothing() -> pi(just(newName), rl, rr, location=r.location)
+             rpi2 :: Expr = case rn of
+             | just(n) -> rr.beta(n, var(newName, location=r.location))
+             | nothing() -> rr
              end
            in
              just(pair([ constraintEq(ll, rl, just(top), location=top.location)
-                       , constraintEq(l2, r2, just(top), location=top.location)
+                       , constraintEq(lpi2, rpi2, just(top), location=top.location)
                        ], []))
            end
         end
@@ -84,7 +92,7 @@ top::Constraint ::= l::Expr r::Expr cause::Maybe<Constraint>
           , text("with")
           , r.expr5_c.pp
           ]),
-        causeMsgs :: [Document] = map(\c::Constraint -> cat(text("While solving "), c.pp), [top.cause.fromJust])
+        causeMsgs :: [Document] = map(\c::Constraint -> cat(text("While solving "), c.pp), causes(top))
       in
         left([err(top.location, show(80, ppImplode(line(), causeMsgs ++ [baseMsg])))])
       end
@@ -92,14 +100,16 @@ top::Constraint ::= l::Expr r::Expr cause::Maybe<Constraint>
   top.substConstraint = \s::Subst -> constraintEq(l.substExpr(s), r.substExpr(s), cause, location=top.location);
 }
 
+synthesized attribute unificationVars :: set:Set<Pair<Integer Location>> occurs on Decl, Decls, Expr, Root;
+synthesized attribute unified :: Root occurs on Root;
+
 autocopy attribute inhTyEnv :: [Pair<String Maybe<Expr>>] occurs on Decl, Decls, Expr;
 synthesized attribute constraints :: [Constraint] with ++;
-attribute constraints occurs on Decl, Decls, Expr;
-synthesized attribute unificationVars :: [Pair<Integer Location>] occurs on Decl, Decls, Expr;
+attribute constraints occurs on Decl, Expr;
 
 synthesized attribute substDecls :: (Decls ::= Subst) occurs on Decls;
 synthesized attribute substsDecls :: (Decls ::= [Subst]) occurs on Decls;
-synthesized attribute unified :: Decls occurs on Decls;
+synthesized attribute unifiedDecls :: Decls occurs on Decls;
 
 function solveAll
 Either<[Message] [Subst]> ::= cs::[Constraint] ss::[Subst]
@@ -129,26 +139,36 @@ top::Decls ::= h::Decl t::Decls
 {
   t.inhTyEnv = h.sigs ++ top.inhTyEnv;
 
-  top.constraints := h.constraints ++ t.constraints;
-  top.unificationVars = h.unificationVars ++ t.unificationVars;
+  top.unificationVars = set:union(h.unificationVars, t.unificationVars);
   top.substDecls = \s::Subst -> declsCons(h.substDecl(s), t.substDecls(s));
 
-  local soln :: Either<[Message] [Subst]> = solveAll(top.constraints, []);
+  local soln :: Either<[Message] [Subst]> = solveAll(h.constraints, []);
   top.errors <- fromLeft(soln, []);
-  top.unified = top.substsDecls(soln.fromRight);
+  top.unifiedDecls = declsCons(h.substsDecl(soln.fromRight), decorate t.substsDecls(soln.fromRight) with {
+    inhTyEnv = top.inhTyEnv;
+  }.unifiedDecls);
 }
 
 aspect production declsNil
 top::Decls ::=
 {
-  top.constraints := [];
-  top.unificationVars = [];
+  top.unificationVars = set:empty(compareFstInteger);
   top.substDecls = \s::Subst -> declsNil();
-  top.unified = top;
+  top.unifiedDecls = top;
 }
 
 synthesized attribute sigs :: [Pair<String Maybe<Expr>>] occurs on Decl;
 synthesized attribute substDecl :: (Decl ::= Subst) occurs on Decl;
+synthesized attribute substsDecl :: (Decl ::= [Subst]) occurs on Decl;
+
+aspect default production
+top::Decl ::=
+{
+  top.substsDecl = \ss::[Subst] -> case ss of
+  | h::t -> top.substDecl(h).substsDecl(t)
+  | [] -> top
+  end;
+}
 
 aspect production declDecl
 top::Decl ::= name::String ty::Expr
@@ -168,7 +188,7 @@ top::Decl ::= name::String ty::Expr body::Expr
   body.inhTy = just(ty);
 
   top.constraints := ty.constraints ++ body.constraints;
-  top.unificationVars = ty.unificationVars ++ body.unificationVars;
+  top.unificationVars = set:union(ty.unificationVars, body.unificationVars);
   top.sigs = [pair(name, just(ty))];
   top.substDecl = \s::Subst ->
     declDef(name, ty.substExpr(s), body.substExpr(s), location=top.location);
@@ -203,7 +223,7 @@ top::Expr ::= f::Expr x::Expr
   | nothing() -> []
   end;
   top.constraints <- f.constraints ++ x.constraints;
-  top.unificationVars = f.unificationVars ++ x.unificationVars;
+  top.unificationVars = set:union(f.unificationVars, x.unificationVars);
   top.substExpr = \s::Subst -> app(f.substExpr(s), x.substExpr(s), location=top.location);
   top.synTy = case f.synTy of
   | pi(just(n), _, r) -> r.beta(n, x)
@@ -259,7 +279,7 @@ top::Expr ::= name::Maybe<String> l::Expr r::Expr
   end;
 
   top.constraints <- l.constraints ++ r.constraints;
-  top.unificationVars = l.unificationVars ++ r.unificationVars;
+  top.unificationVars = set:union(l.unificationVars, r.unificationVars);
   top.substExpr = \s::Subst -> pi(name, l.substExpr(s), r.substExpr(s), location=top.location);
 }
 
@@ -271,7 +291,7 @@ top::Expr ::= id::Integer
   | just(ty) -> []
   | nothing() -> [err(top.location, "Cannot infer type of ?" ++ toString(id))]
   end;
-  top.unificationVars = [pair(id, top.location)];
+  top.unificationVars = set:add([pair(id, top.location)], set:empty(compareFstInteger));
   top.substExpr = \s::Subst -> case s of 
     | substVar(id2, e) -> if id == id2 then e else top
     end;
@@ -289,7 +309,7 @@ top::Expr ::=
   | just(ty) -> [err(top.location, "TYPE has no type")]
   | nothing() -> []
   end;
-  top.unificationVars = [];
+  top.unificationVars = set:empty(compareFstInteger);
   top.substExpr = \s::Subst -> top;
   top.synTy = error("TYPE has no type");
 }
@@ -306,7 +326,7 @@ top::Expr ::= s::String
   | just(nothing()) -> [err(top.location, "Cannot infer type of bound variable " ++ s)]
   | nothing() -> [err(top.location, "Cannot infer type of free variable " ++ s)]
   end;
-  top.unificationVars = [];
+  top.unificationVars = set:empty(compareFstInteger);
   top.substExpr = \s::Subst -> top;
   top.synTy = case lookupBy(stringEq, s, top.inhTyEnv) of
   | just(just(t)) -> t

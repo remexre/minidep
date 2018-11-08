@@ -4,6 +4,14 @@ import edu:umn:cs:melt:minidep:concretesyntax;
 import silver:langutil;
 import silver:langutil:pp;
 
+aspect production root
+top::Root ::= deps::[Pair<String Root>] decls::Decls
+{
+  top.pp = ppConcat(map(
+    \p::Pair<String Root> -> cat(text("import \"" ++ p.fst ++ "\";"), line()),
+    deps) ++ [line(), decls.pp]);
+}
+
 aspect production declsCons
 top::Decls ::= h::Decl t::Decls
 {

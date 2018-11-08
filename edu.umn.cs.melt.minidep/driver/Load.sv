@@ -2,24 +2,24 @@ grammar edu:umn:cs:melt:minidep:driver;
 
 import core:monad;
 import edu:umn:cs:melt:minidep:abstractsyntax:implicit as implicit;
-import edu:umn:cs:melt:minidep:abstractsyntax:implicit only sigs;
 import edu:umn:cs:melt:minidep:abstractsyntax:unification as unification;
-import edu:umn:cs:melt:minidep:concretesyntax only Root_c, ast;
+import edu:umn:cs:melt:minidep:concretesyntax only Root_c, imps, root;
 import edu:umn:cs:melt:minidep:util;
 import silver:langutil;
 import silver:langutil:pp;
 
 function loadFile
-IOMonad<Either<[Message] Decorated implicit:Decls>> ::= parse::(ParseResult<Root_c> ::= String String) path::String env::[Pair<String Maybe<Decorated implicit:Signature>>]
+IOMonad<Either<[Message] implicit:Root>> ::= parse::(ParseResult<Root_c> ::= String String) path::String alreadyLoading::[String]
 {
-  return do (bindErrIO, returnErrIO) {
+  return if containsBy(stringEq, path, alreadyLoading) then
+    throwOne(err(builtin(), "Dependency loop involving " ++ path))
+  else do (bindErrIO, returnErrIO) {
     cst :: Root_c <- mustParse(parse, path);
     liftIO(printM("cst pp:\n" ++ show(80, cst.pp)));
     throwIfAny(cst.errors);
 
-    ast :: Decorated implicit:Decls = decorate cst.ast with {
-      implicit:env = env;
-    };
+    deps :: [Pair<String implicit:Root>] <- loadFiles(parse, cst.imps, path::alreadyLoading);
+    ast :: implicit:Root = cst.root(deps);
     liftIO(printM("\nast pp (pre-elaboration):\n" ++ show(80, ast.pp)));
     throwIfAny(ast.errors);
 
@@ -27,17 +27,21 @@ IOMonad<Either<[Message] Decorated implicit:Decls>> ::= parse::(ParseResult<Root
   };
 }
 
-function loadSigs
-IOMonad<Either<[Message] [Pair<String Maybe<Decorated implicit:Signature>>]>> ::= parse::(ParseResult<Root_c> ::= String String) path::String env::[Pair<String Maybe<Decorated implicit:Signature>>]
+function loadFiles
+IOMonad<Either<[Message] [Pair<String implicit:Root>]>> ::= parse::(ParseResult<Root_c> ::= String String) paths::[String] alreadyLoading::[String]
 {
-  return do (bindErrIO, returnErrIO) {
-    decls :: Decorated implicit:Decls <- loadFile(parse, path, env);
-    return mapSndJust(decls.sigs);
-  };
+  return case paths of
+  | [] -> returnErrIO([])
+  | h::t -> do (bindErrIO, returnErrIO) {
+      h2 :: implicit:Root <- loadFile(parse, h, alreadyLoading);
+      t2 :: [Pair<String implicit:Root>] <- loadFiles(parse, t, alreadyLoading);
+      return (pair(h, h2) :: t2);
+    }
+  end;
 }
 
 function loadAndElab
-IOMonad<Either<[Message] Decorated unification:Decls>> ::= parse::(ParseResult<Root_c> ::= String String) path::String env::[Pair<String Maybe<Decorated implicit:Signature>>]
+IOMonad<Either<[Message] unification:Root>> ::= parse::(ParseResult<Root_c> ::= String String) path::String
 {
-  return bindErrIO(loadFile(parse, path, env), elabAndSolve);
+  return bindErrIO(loadFile(parse, path, []), elabAndSolve);
 }

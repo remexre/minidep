@@ -1,23 +1,40 @@
 grammar edu:umn:cs:melt:minidep:abstractsyntax:implicit;
 
 import edu:umn:cs:melt:minidep:abstractsyntax:unification as unification;
-import edu:umn:cs:melt:minidep:abstractsyntax:unification only append;
+import edu:umn:cs:melt:minidep:abstractsyntax:unification only inhTyEnv, inhValEnv;
 import edu:umn:cs:melt:minidep:util;
 import silver:langutil;
 import silver:util:raw:treeset as set;
 
+synthesized attribute elaborated :: unification:Root occurs on Root;
+
+aspect production root
+top::Root ::= deps::[Pair<String Root>] decls::Decls
+{
+  -- TODO: Eliminate elaboratedTyEnv and elaboratedValEnv?
+  top.elaborated = unification:root(map(
+    \p::Pair<String Root> -> pair(p.fst, p.snd.elaborated),
+    deps), decls.elaboratedDecls);
+}
+
 synthesized attribute elaboratedDecls :: unification:Decls occurs on Decls;
+synthesized attribute elaboratedTyEnv :: [Pair<String Maybe<unification:Expr>>] occurs on Decl, Decls;
+synthesized attribute elaboratedValEnv :: [Pair<String Maybe<unification:Expr>>] occurs on Decl, Decls;
 
 aspect production declsCons
 top::Decls ::= h::Decl t::Decls
 {
   top.elaboratedDecls = unification:declsCons(h.elaboratedDecl, t.elaboratedDecls);
+  top.elaboratedTyEnv = h.elaboratedTyEnv ++ t.elaboratedTyEnv;
+  top.elaboratedValEnv = t.elaboratedTyEnv ++ t.elaboratedValEnv;
 }
 
 aspect production declsNil
 top::Decls ::=
 {
   top.elaboratedDecls = unification:declsNil();
+  top.elaboratedTyEnv = [];
+  top.elaboratedValEnv = [];
 }
 
 synthesized attribute elaboratedExpr :: unification:Expr occurs on Expr, Signature;
@@ -35,6 +52,8 @@ top::Decl ::= name::String implicits::Implicits ty::Expr
 {
   top.elaboratedDecl = unification:declDecl(name, implicits.appPiTo(top.env, ty.elaboratedExpr),
                                             location=top.location);
+  top.elaboratedTyEnv = [pair(name, just(implicits.appPiTo(top.env, ty.elaboratedExpr)))];
+  top.elaboratedValEnv = [pair(name, nothing())];
 }
 
 aspect production declDef
@@ -43,6 +62,8 @@ top::Decl ::= name::String implicits::Implicits ty::Expr body::Expr
   top.elaboratedDecl = unification:declDef(name, implicits.appPiTo(top.env, ty.elaboratedExpr),
                                            implicits.appLamTo(top.env, body.elaboratedExpr),
                                            location=top.location);
+  top.elaboratedTyEnv = [pair(name, just(implicits.appPiTo(top.env, ty.elaboratedExpr)))];
+  top.elaboratedValEnv = [pair(name, just(implicits.appLamTo(top.env, body.elaboratedExpr)))];
 }
 
 synthesized attribute appLamTo :: (unification:Expr ::= [Pair<String Maybe<Decorated Signature>>] unification:Expr) occurs on Implicits;
@@ -114,7 +135,7 @@ top::Expr ::=
 aspect production var
 top::Expr ::= name::String implicits::Implicits
 {
-  local wanted :: [String] = case lookupTyEnv(name, top.env) of
+  local wanted :: [String] = case lookupEnv(name, top.env) of
   | just(sig(implicits, _)) -> implicits.names
   | _ -> []
   end;

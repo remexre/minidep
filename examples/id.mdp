@@ -1,0 +1,8 @@
+Nat : TYPE;
+zero : Nat;
+
+Wrapped : {T: TYPE} -> T -> TYPE;
+wrap : {T: TYPE} -> (x: T) -> Wrapped x;
+
+test : Wrapped 0;
+test = wrap 0;
