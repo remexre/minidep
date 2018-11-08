@@ -1,3 +1,14 @@
+id : {T: TYPE} -> T -> T;
+id = \x -> x;
+the : (T: TYPE) -> T -> T;
+the = \T -> id {T=T};
+
+(=) : {T: TYPE} -> T -> T -> TYPE;
+refl : {T: TYPE} -> (a: T) -> a = a;
+
+const : {T: TYPE, U: TYPE} -> T -> U -> T;
+const = \x _ -> x;
+
 Bool : TYPE;
 true : Bool;
 false : Bool;
@@ -6,20 +17,16 @@ elimBool : (m: Bool -> TYPE) -> m true -> m false -> (b: Bool) -> m b;
 Nat : TYPE;
 zero : Nat;
 succ : Nat -> Nat;
+elimNat : (m: Nat -> TYPE) -> m zero -> ((n: Nat) -> m (succ n)) -> (n: Nat) -> m n;
+
 (+) : Nat -> Nat -> Nat;
+(+) = \l r -> elimNat (const Nat) l succ r;
+
 (*) : Nat -> Nat -> Nat;
 
 -- List : TYPE -> TYPE;
 -- nil : {T: TYPE} -> List T;
 -- cons : {T: TYPE} -> T -> List T -> List T;
-
-id : {T: TYPE} -> T -> T;
-id = \x -> x;
-the : (T: TYPE) -> T -> T;
--- the = \T -> id {T=T};
-
-(=) : {T: TYPE} -> T -> T -> TYPE;
-refl : {T: TYPE} -> (a: T) -> a = a;
 
 -- foldl : {T: TYPE, U: TYPE} -> (U -> T -> U) -> U -> List T -> U;
 -- TODO: Implement foldl
