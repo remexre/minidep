@@ -1,6 +1,7 @@
 .*
 !.gitignore
 
-build.xml
 *.html
 *.jar
+build.xml
+target/

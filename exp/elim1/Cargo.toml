@@ -1,0 +1,7 @@
+[package]
+name = "exp"
+version = "0.1.0"
+authors = ["Nathan Ringo <remexre@gmail.com>"]
+
+[dependencies]
+symbol = "0.1.7"

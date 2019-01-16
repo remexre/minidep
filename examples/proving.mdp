@@ -1,7 +1,17 @@
-import "stdlib.mdp";
+-- import "stdlib.mdp";
 
-z_eq_z : 0 = 0;
-z_eq_z = refl 0;
+-- z_eq_z : 0 = 0;
+-- z_eq_z = refl 0;
 
-two_plus_two : (2 + 2) = 4;
-two_plus_two = refl 4;
+Nat : TYPE;
+zero : Nat;
+succ : Nat -> Nat;
+
+const : {T: TYPE, U: TYPE} -> T -> U -> T;
+const = \x _ -> x;
+
+foo : Nat;
+foo = const 0 Nat;
+
+-- two_plus_two : (2 + 2) = 4;
+-- two_plus_two = refl 4;

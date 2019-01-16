@@ -2,7 +2,7 @@ grammar edu:umn:cs:melt:minidep:driver;
 
 import core:monad;
 import edu:umn:cs:melt:minidep:abstractsyntax:implicit as implicit;
-import edu:umn:cs:melt:minidep:abstractsyntax:unification as unification;
+import edu:umn:cs:melt:minidep:abstractsyntax:explicit as explicit;
 import edu:umn:cs:melt:minidep:concretesyntax only Root_c, imps, root;
 import edu:umn:cs:melt:minidep:util;
 import silver:langutil;
@@ -41,7 +41,7 @@ IOMonad<Either<[Message] [Pair<String implicit:Root>]>> ::= parse::(ParseResult<
 }
 
 function loadAndElab
-IOMonad<Either<[Message] unification:Root>> ::= parse::(ParseResult<Root_c> ::= String String) path::String
+IOMonad<Either<[Message] explicit:Root>> ::= parse::(ParseResult<Root_c> ::= String String) path::String
 {
   return bindErrIO(loadFile(parse, path, []), elabAndSolve);
 }

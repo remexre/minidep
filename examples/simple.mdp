@@ -1,0 +1,7 @@
+Nat : TYPE;
+zero : Nat;
+succ : Nat -> Nat;
+(+) : Nat -> Nat -> Nat;
+
+three : Nat;
+three = 1 + 2;

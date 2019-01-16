@@ -37,8 +37,10 @@ top::Expr ::= f::Expr x::Expr
 aspect production lam
 top::Expr ::= name::String body::Expr
 {
-  top.normal = true;
-  top.normalized = top;
+  top.normal = body.normal;
+  local reduced :: Expr = lam(name, body.normalized, location=top.location);
+  reduced.inhValEnv = top.inhValEnv;
+  top.normalized = reduced;
 }
 
 aspect production pi

@@ -65,7 +65,6 @@ top::Imports_c ::=
 -- The declaration, claim, and definition nonterminals and productions.
 
 nonterminal Decls_c with ast<Decls>, errors, location, pp;
-synthesized attribute ast<a> :: a;
 
 -- TODO: Use `layout` to not need semicolons
 -- http://melt.cs.umn.edu/silver/ref/decl/productions/concrete/#layout
